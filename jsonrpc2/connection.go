@@ -86,7 +86,7 @@ func (id ID) MarshalJSON() ([]byte, error) {
 // The request object may contain an ID.
 // The request object may contain parameters.
 type Request[Params any] struct {
-	ID     ID     `json:"id,omitempty,omitzero"`
+	ID     ID     `json:"id,omitzero"`
 	Method Method `json:"method"`
 	Params Params `json:"params,omitempty,omitzero"`
 }
