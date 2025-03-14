@@ -131,6 +131,15 @@ type Error[Data any] struct {
 	Data    Data   `json:"data,omitempty,omitzero"`
 }
 
+// NewError creates a new JSON-RPC 2.0 error.
+func NewError[Data any](code int, message string, data Data) *Error[Data] {
+	return &Error[Data]{
+		Code:    code,
+		Message: message,
+		Data:    data,
+	}
+}
+
 // Error implements the error interface.
 func (e *Error[Data]) Error() string {
 	return e.Message
@@ -176,17 +185,18 @@ func convertError(err error) *Error[any] {
 	}
 }
 
-// Handler represents a JSON-RPC 2.0 request handler.
-type Handler interface {
-	HandleRequest(ctx context.Context, req json.RawMessage) (any, error)
+type Handler[Params, Result any] interface {
+	HandleRequest(ctx context.Context, req Params) (Result, error)
 }
 
-// HandlerFunc is an adapter to allow the use of ordinary functions as JSON-RPC 2.0 request handlers.
-type HandlerFunc func(ctx context.Context, req json.RawMessage) (any, error)
-
-// HandleRequest calls f(ctx, req).
-func (f HandlerFunc) HandleRequest(ctx context.Context, req json.RawMessage) (any, error) {
-	return f(ctx, req)
+func RegisterHandler[Params, Result any](c *Conn, method string, h Handler[Params, Result]) {
+	c.handlers[Method(method)] = func(ctx context.Context, req json.RawMessage) (any, error) {
+		var r Request[Params]
+		if err := json.Unmarshal(req, &r); err != nil {
+			return nil, err
+		}
+		return h.HandleRequest(ctx, r.Params)
+	}
 }
 
 // Conn represents a JSON-RPC 2.0 connection.
@@ -197,7 +207,7 @@ type Conn struct {
 	dec      *json.Decoder
 	mutex    sync.Mutex
 	pending  map[ID]chan json.RawMessage
-	handlers map[Method]Handler
+	handlers map[Method]func(ctx context.Context, req json.RawMessage) (any, error)
 	closed   chan struct{}
 }
 
@@ -207,7 +217,7 @@ func NewConnection(r io.Reader, w io.Writer) *Conn {
 		enc:      json.NewEncoder(w),
 		dec:      json.NewDecoder(r),
 		pending:  make(map[ID]chan json.RawMessage),
-		handlers: make(map[Method]Handler),
+		handlers: make(map[Method]func(ctx context.Context, req json.RawMessage) (any, error)),
 		closed:   make(chan struct{}),
 	}
 
@@ -361,7 +371,7 @@ func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
 		return errors.New("method not found")
 	}
 
-	resp, err := handler.HandleRequest(ctx, req.Params)
+	resp, err := handler(ctx, req.Params)
 	if err != nil {
 		return c.sendError(ctx, req.ID, err)
 	}
@@ -440,7 +450,7 @@ func (c *Conn) handleNotification(ctx context.Context, msg json.RawMessage) erro
 		return errors.New("method not found")
 	}
 
-	_, err := handler.HandleRequest(ctx, req.Params)
+	_, err := handler(ctx, req.Params)
 	if err != nil {
 		return err
 	}
