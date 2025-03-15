@@ -144,148 +144,197 @@ func TestRequest_UnmarshalJSON(t *testing.T) {
 }
 
 func TestResponse_MarshalJSON(t *testing.T) {
-  tests := []struct {
-    resp     *Response[any, any]
-    expected string
-  }{
-    {
-      resp:     &Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
-      expected: `{"jsonrpc":"2.0","id":"1","result":"result"}`,
-    },
-    {
-      resp:     &Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
-      expected: `{"jsonrpc":"2.0","id":1,"result":123}`,
-    },
-    {
-      resp:     &Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
-      expected: `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
-    },
-  }
+	tests := []struct {
+		resp     *Response[any, any]
+		expected string
+	}{
+		{
+			resp:     &Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
+			expected: `{"jsonrpc":"2.0","id":"1","result":"result"}`,
+		},
+		{
+			resp:     &Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
+			expected: `{"jsonrpc":"2.0","id":1,"result":123}`,
+		},
+		{
+			resp:     &Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
+			expected: `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
+		},
+	}
 
-  for _, test := range tests {
-    result, err := json.Marshal(test.resp)
-    if err != nil {
-      t.Errorf("MarshalJSON(%v) error: %v", test.resp, err)
-    }
-    if string(result) != test.expected {
-      t.Errorf("MarshalJSON(%v) = %v; want %v", test.resp, string(result), test.expected)
-    }
-  }
+	for _, test := range tests {
+		result, err := json.Marshal(test.resp)
+		if err != nil {
+			t.Errorf("MarshalJSON(%v) error: %v", test.resp, err)
+		}
+		if string(result) != test.expected {
+			t.Errorf("MarshalJSON(%v) = %v; want %v", test.resp, string(result), test.expected)
+		}
+	}
 }
 
 func TestResponse_UnmarshalJSON(t *testing.T) {
-  tests := []struct {
-    input    string
-    expected Response[any, any]
-  }{
-    {
-      input:    `{"jsonrpc":"2.0","id":"1","result":"result"}`,
-      expected: Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
-    },
-    {
-      input:    `{"jsonrpc":"2.0","id":1,"result":123}`,
-      expected: Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
-    },
-    {
-      input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
-      expected: Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
-    },
-  }
+	tests := []struct {
+		input    string
+		expected Response[any, any]
+	}{
+		{
+			input:    `{"jsonrpc":"2.0","id":"1","result":"result"}`,
+			expected: Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
+		},
+		{
+			input:    `{"jsonrpc":"2.0","id":1,"result":123}`,
+			expected: Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
+		},
+		{
+			input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
+			expected: Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
+		},
+	}
 
-  for _, test := range tests {
-    var resp Response[any, any]
-    if err := json.Unmarshal([]byte(test.input), &resp); err != nil {
-      t.Errorf("UnmarshalJSON(%v) error: %v", test.input, err)
-    }
-    if resp.ID != test.expected.ID || fmt.Sprintf("%v", resp.Result) != fmt.Sprintf("%v", test.expected.Result) || resp.Error.Code != test.expected.Error.Code || resp.Error.Message != test.expected.Error.Message {
-      t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, resp, test.expected)
-    }
-  }
+	for _, test := range tests {
+		var resp Response[any, any]
+		if err := json.Unmarshal([]byte(test.input), &resp); err != nil {
+			t.Errorf("UnmarshalJSON(%v) error: %v", test.input, err)
+		}
+		if resp.ID != test.expected.ID || fmt.Sprintf("%v", resp.Result) != fmt.Sprintf("%v", test.expected.Result) || resp.Error.Code != test.expected.Error.Code || resp.Error.Message != test.expected.Error.Message {
+			t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, resp, test.expected)
+		}
+	}
 }
 
 func TestError_Error(t *testing.T) {
-  tests := []struct {
-    err      Error[any]
-    expected string
-  }{
-    {err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
-    {err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
-  }
+	tests := []struct {
+		err      Error[any]
+		expected string
+	}{
+		{err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
+		{err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
+	}
 
-  for _, test := range tests {
-    if result := test.err.Error(); result != test.expected {
-      t.Errorf("Error(%v).Error() = %v; want %v", test.err, result, test.expected)
-    }
-  }
+	for _, test := range tests {
+		if result := test.err.Error(); result != test.expected {
+			t.Errorf("Error(%v).Error() = %v; want %v", test.err, result, test.expected)
+		}
+	}
 }
 
 func TestError_code(t *testing.T) {
-  tests := []struct {
-    err      Error[any]
-    expected int
-  }{
-    {err: Error[any]{Code: -32000, Message: "error"}, expected: -32000},
-    {err: Error[any]{Code: -32001, Message: "another error"}, expected: -32001},
-  }
+	tests := []struct {
+		err      Error[any]
+		expected int
+	}{
+		{err: Error[any]{Code: -32000, Message: "error"}, expected: -32000},
+		{err: Error[any]{Code: -32001, Message: "another error"}, expected: -32001},
+	}
 
-  for _, test := range tests {
-    if result := test.err.code(); result != test.expected {
-      t.Errorf("Error(%v).code() = %v; want %v", test.err, result, test.expected)
-    }
-  }
+	for _, test := range tests {
+		if result := test.err.code(); result != test.expected {
+			t.Errorf("Error(%v).code() = %v; want %v", test.err, result, test.expected)
+		}
+	}
 }
 
 func TestError_message(t *testing.T) {
-  tests := []struct {
-    err      Error[any]
-    expected string
-  }{
-    {err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
-    {err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
-  }
+	tests := []struct {
+		err      Error[any]
+		expected string
+	}{
+		{err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
+		{err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
+	}
 
-  for _, test := range tests {
-    if result := test.err.message(); result != test.expected {
-      t.Errorf("Error(%v).message() = %v; want %v", test.err, result, test.expected)
-    }
-  }
+	for _, test := range tests {
+		if result := test.err.message(); result != test.expected {
+			t.Errorf("Error(%v).message() = %v; want %v", test.err, result, test.expected)
+		}
+	}
 }
 
 func TestError_data(t *testing.T) {
-  tests := []struct {
-    err      Error[string]
-    expected string
-  }{
-    {err: Error[string]{Code: -32000, Message: "error", Data: "data"}, expected: "data"},
-    {err: Error[string]{Code: -32001, Message: "another error", Data: "more data"}, expected: "more data"},
-  }
+	tests := []struct {
+		err      Error[string]
+		expected string
+	}{
+		{err: Error[string]{Code: -32000, Message: "error", Data: "data"}, expected: "data"},
+		{err: Error[string]{Code: -32001, Message: "another error", Data: "more data"}, expected: "more data"},
+	}
 
-  for _, test := range tests {
-    if result := test.err.data(); result != test.expected {
-      t.Errorf("Error(%v).data() = %v; want %v", test.err, result, test.expected)
-    }
-  }
+	for _, test := range tests {
+		if result := test.err.data(); result != test.expected {
+			t.Errorf("Error(%v).data() = %v; want %v", test.err, result, test.expected)
+		}
+	}
 }
 
 func TestConvertError(t *testing.T) {
-  tests := []struct {
-    input    error
-    expected Error[any]
-  }{
-    {
-      input:    errors.New("standard error"),
-      expected: Error[any]{Code: -32000, Message: "standard error", Data: errors.New("standard error")},
-    },
-    {
-      input:    NewError(-32001, "custom error", "data"),
-      expected: Error[any]{Code: -32001, Message: "custom error", Data: "data"},
-    },
-  }
+	tests := []struct {
+		input    error
+		expected Error[any]
+	}{
+		{
+			input:    errors.New("standard error"),
+			expected: Error[any]{Code: -32000, Message: "standard error", Data: errors.New("standard error")},
+		},
+		{
+			input:    NewError(-32001, "custom error", "data"),
+			expected: Error[any]{Code: -32001, Message: "custom error", Data: "data"},
+		},
+	}
 
-  for _, test := range tests {
-    result := convertError(test.input)
-    if result.Code != test.expected.Code || result.Message != test.expected.Message || fmt.Sprintf("%v", result.Data) != fmt.Sprintf("%v", test.expected.Data) {
-      t.Errorf("convertError(%v) = %v; want %v", test.input, result, test.expected)
-    }
-  }
+	for _, test := range tests {
+		result := convertError(test.input)
+		if result.Code != test.expected.Code || result.Message != test.expected.Message || fmt.Sprintf("%v", result.Data) != fmt.Sprintf("%v", test.expected.Data) {
+			t.Errorf("convertError(%v) = %v; want %v", test.input, result, test.expected)
+		}
+	}
+}
+
+func TestGetMessageType(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected messageType
+		err      error
+	}{
+		{
+			input:    `{"jsonrpc":"2.0","method":"testMethod","id":1}`,
+			expected: messageRequest,
+			err:      nil,
+		},
+		{
+			input:    `{"jsonrpc":"2.0","method":"testMethod"}`,
+			expected: messageNotification,
+			err:      nil,
+		},
+		{
+			input:    `{"jsonrpc":"2.0","id":1,"result":"testResult"}`,
+			expected: messageResponse,
+			err:      nil,
+		},
+		{
+			input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
+			expected: messageResponse,
+			err:      nil,
+		},
+		{
+			input:    `{"jsonrpc":"2.0","result":"testResult"}`,
+			expected: 0,
+			err:      errors.New("invalid message type"),
+		},
+		{
+			input:    `{"jsonrpc":"1.0","method":"testMethod"}`,
+			expected: 0,
+			err:      errors.New("invalid JSON-RPC version"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			var msg json.RawMessage = []byte(test.input)
+			result, err := getMessageType(msg)
+			if result != test.expected || (err != nil && err.Error() != test.err.Error()) {
+				t.Errorf("getMessageType(%v) = %v, %v; want %v, %v", test.input, result, err, test.expected, test.err)
+			}
+		})
+	}
 }

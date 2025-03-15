@@ -142,7 +142,7 @@ func (r *Request[Params]) UnmarshalJSON(data []byte) error {
 // The response object must contain a unique ID.
 // The response object may contain a result or an error.
 type Response[Result, ErrorData any] struct {
-	ID     ID                `json:"id,omitempty,omitzero"`
+	ID     ID               `json:"id,omitempty,omitzero"`
 	Result Result           `json:"result,omitempty,omitzero"`
 	Error  Error[ErrorData] `json:"error,omitempty,omitzero"`
 }
@@ -150,8 +150,8 @@ type Response[Result, ErrorData any] struct {
 // MarshalJSON implements the json.Marshaler interface.
 func (r *Response[Result, ErrorData]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		JSONRPC string            `json:"jsonrpc"`
-		ID      ID                `json:"id,omitempty,omitzero"`
+		JSONRPC string           `json:"jsonrpc"`
+		ID      ID               `json:"id,omitempty,omitzero"`
 		Result  Result           `json:"result,omitempty,omitzero"`
 		Error   Error[ErrorData] `json:"error,omitempty,omitzero"`
 	}{
@@ -165,8 +165,8 @@ func (r *Response[Result, ErrorData]) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (r *Response[Result, ErrorData]) UnmarshalJSON(data []byte) error {
 	var resp struct {
-		JSONRPC string            `json:"jsonrpc"`
-		ID      ID                `json:"id,omitzero"`
+		JSONRPC string           `json:"jsonrpc"`
+		ID      ID               `json:"id,omitzero"`
 		Result  Result           `json:"result,omitempty,omitzero"`
 		Error   Error[ErrorData] `json:"error,omitempty,omitzero"`
 	}
@@ -404,19 +404,35 @@ func getMessageType(msg json.RawMessage) (messageType, error) {
 		return 0, err
 	}
 
-	if _, ok := v["id"]; !ok {
-		return messageNotification, nil
+	if v, ok := v["jsonrpc"]; !ok || v != "2.0" {
+		return 0, errors.New("invalid JSON-RPC version")
 	}
-	if _, ok := v["method"]; ok {
-		return messageRequest, nil
-	}
-	if _, ok := v["result"]; ok {
-		return messageResponse, nil
-	}
+
 	if _, ok := v["error"]; ok {
+		// if error is present, it's a response
+		// error response may not have an id
 		return messageResponse, nil
 	}
 
+	if _, ok := v["result"]; ok {
+		if _, ok := v["id"]; ok {
+			// if result and id are present, it's a response
+			return messageResponse, nil
+		}
+		// if result present, but id is missing, it's invalid
+		return 0, errors.New("invalid message type")
+	}
+
+	if _, ok := v["method"]; ok {
+		if _, ok := v["id"]; ok {
+			// if method and id are present, it's a request
+			return messageRequest, nil
+		}
+		// if method is present, but id is missing, it's a notification
+		return messageNotification, nil
+	}
+
+	// otherwise, it's invalid
 	return 0, errors.New("invalid message type")
 }
 
