@@ -268,6 +268,7 @@ func (f HandlerFunc[Params, Result]) HandleRequest(ctx context.Context, req Para
 	return f(ctx, req)
 }
 
+// RegisterHandler registers a request handler.
 func RegisterHandler[Params, Result any](c *Conn, method string, h Handler[Params, Result]) {
 	c.handlers[Method(method)] = func(ctx context.Context, req json.RawMessage) (any, error) {
 		var r Request[Params]
@@ -275,6 +276,16 @@ func RegisterHandler[Params, Result any](c *Conn, method string, h Handler[Param
 			return nil, err
 		}
 		return h.HandleRequest(ctx, r.Params)
+	}
+}
+
+// ConnectionInitializationOption represents a JSON-RPC 2.0 connection initialization option.
+type ConnectionInitializationOption func(*Conn)
+
+// WithHandler registers a request handler.
+func WithHandler[Params, Result any](method string, h Handler[Params, Result]) ConnectionInitializationOption {
+	return func(c *Conn) {
+		RegisterHandler(c, method, h)
 	}
 }
 
@@ -291,13 +302,17 @@ type Conn struct {
 }
 
 // NewConnection creates a new JSON-RPC 2.0 connection.
-func NewConnection(r io.Reader, w io.Writer) *Conn {
+func NewConnection(r io.Reader, w io.Writer, opts ...ConnectionInitializationOption) *Conn {
 	conn := &Conn{
 		enc:      json.NewEncoder(w),
 		dec:      json.NewDecoder(r),
 		pending:  make(map[ID]chan json.RawMessage),
 		handlers: make(map[Method]func(ctx context.Context, req json.RawMessage) (any, error)),
 		closed:   make(chan struct{}),
+	}
+
+	for _, opt := range opts {
+		opt(conn)
 	}
 
 	go conn.serve(context.Background())
