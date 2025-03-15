@@ -44,7 +44,7 @@ func (id ID) String() string {
 	case nil:
 		return ""
 	default:
-		return ""
+		panic("invalid ID type")
 	}
 }
 
