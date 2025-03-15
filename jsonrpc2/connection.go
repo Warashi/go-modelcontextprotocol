@@ -143,8 +143,8 @@ func (r *Request[Params]) UnmarshalJSON(data []byte) error {
 // The response object may contain a result or an error.
 type Response[Result, ErrorData any] struct {
 	ID     ID                `json:"id,omitempty,omitzero"`
-	Result *Result           `json:"result,omitempty,omitzero"`
-	Error  *Error[ErrorData] `json:"error,omitempty,omitzero"`
+	Result Result           `json:"result,omitempty,omitzero"`
+	Error  Error[ErrorData] `json:"error,omitempty,omitzero"`
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -152,8 +152,8 @@ func (r *Response[Result, ErrorData]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		JSONRPC string            `json:"jsonrpc"`
 		ID      ID                `json:"id,omitempty,omitzero"`
-		Result  *Result           `json:"result,omitempty,omitzero"`
-		Error   *Error[ErrorData] `json:"error,omitempty,omitzero"`
+		Result  Result           `json:"result,omitempty,omitzero"`
+		Error   Error[ErrorData] `json:"error,omitempty,omitzero"`
 	}{
 		JSONRPC: "2.0",
 		ID:      r.ID,
@@ -167,8 +167,8 @@ func (r *Response[Result, ErrorData]) UnmarshalJSON(data []byte) error {
 	var resp struct {
 		JSONRPC string            `json:"jsonrpc"`
 		ID      ID                `json:"id,omitzero"`
-		Result  *Result           `json:"result,omitempty,omitzero"`
-		Error   *Error[ErrorData] `json:"error,omitempty,omitzero"`
+		Result  Result           `json:"result,omitempty,omitzero"`
+		Error   Error[ErrorData] `json:"error,omitempty,omitzero"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return err
@@ -193,8 +193,8 @@ type Error[Data any] struct {
 }
 
 // NewError creates a new JSON-RPC 2.0 error.
-func NewError[Data any](code int, message string, data Data) *Error[Data] {
-	return &Error[Data]{
+func NewError[Data any](code int, message string, data Data) Error[Data] {
+	return Error[Data]{
 		Code:    code,
 		Message: message,
 		Data:    data,
@@ -202,27 +202,27 @@ func NewError[Data any](code int, message string, data Data) *Error[Data] {
 }
 
 // Error implements the error interface.
-func (e *Error[Data]) Error() string {
+func (e Error[Data]) Error() string {
 	return e.Message
 }
 
 // code returns the error code.
-func (e *Error[Data]) code() int {
+func (e Error[Data]) code() int {
 	return e.Code
 }
 
 // message returns the error message.
-func (e *Error[Data]) message() string {
+func (e Error[Data]) message() string {
 	return e.Message
 }
 
 // data returns the error data as an any.
-func (e *Error[Data]) data() any {
+func (e Error[Data]) data() any {
 	return e.Data
 }
 
 // convertError converts an error to a JSON-RPC 2.0 error.
-func convertError(err error) *Error[any] {
+func convertError(err error) Error[any] {
 	if err == nil {
 		panic("nil error")
 	}
@@ -232,14 +232,14 @@ func convertError(err error) *Error[any] {
 		message() string
 		data() any
 	}); ok {
-		return &Error[any]{
+		return Error[any]{
 			Code:    e.code(),
 			Message: e.message(),
 			Data:    e.data(),
 		}
 	}
 
-	return &Error[any]{
+	return Error[any]{
 		Code:    -32000,
 		Message: err.Error(),
 		Data:    err,

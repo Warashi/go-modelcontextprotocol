@@ -141,3 +141,63 @@ func TestRequest_UnmarshalJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestResponse_MarshalJSON(t *testing.T) {
+  tests := []struct {
+    resp     *Response[any, any]
+    expected string
+  }{
+    {
+      resp:     &Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
+      expected: `{"jsonrpc":"2.0","id":"1","result":"result"}`,
+    },
+    {
+      resp:     &Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
+      expected: `{"jsonrpc":"2.0","id":1,"result":123}`,
+    },
+    {
+      resp:     &Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
+      expected: `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
+    },
+  }
+
+  for _, test := range tests {
+    result, err := json.Marshal(test.resp)
+    if err != nil {
+      t.Errorf("MarshalJSON(%v) error: %v", test.resp, err)
+    }
+    if string(result) != test.expected {
+      t.Errorf("MarshalJSON(%v) = %v; want %v", test.resp, string(result), test.expected)
+    }
+  }
+}
+
+func TestResponse_UnmarshalJSON(t *testing.T) {
+  tests := []struct {
+    input    string
+    expected Response[any, any]
+  }{
+    {
+      input:    `{"jsonrpc":"2.0","id":"1","result":"result"}`,
+      expected: Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
+    },
+    {
+      input:    `{"jsonrpc":"2.0","id":1,"result":123}`,
+      expected: Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
+    },
+    {
+      input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
+      expected: Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
+    },
+  }
+
+  for _, test := range tests {
+    var resp Response[any, any]
+    if err := json.Unmarshal([]byte(test.input), &resp); err != nil {
+      t.Errorf("UnmarshalJSON(%v) error: %v", test.input, err)
+    }
+    if resp.ID != test.expected.ID || fmt.Sprintf("%v", resp.Result) != fmt.Sprintf("%v", test.expected.Result) || resp.Error.Code != test.expected.Error.Code || resp.Error.Message != test.expected.Error.Message {
+      t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, resp, test.expected)
+    }
+  }
+}
