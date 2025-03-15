@@ -8,6 +8,7 @@ import (
 	"io"
 	"strconv"
 	"sync"
+	"sync/atomic"
 )
 
 // Method represents a JSON-RPC 2.0 request method.
@@ -183,6 +184,14 @@ func (r *Response[Result, ErrorData]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// tuple returns the result and an error if the response is unsuccessful.
+func (r *Response[Result, ErrorData]) tuple() (Result, error) {
+	if r.Error.Code != 0 {
+		return r.Result, r.Error
+	}
+	return r.Result, nil
+}
+
 // Error represents a JSON-RPC 2.0 error.
 // The error object must contain a code and a message.
 // The error object may contain data.
@@ -318,14 +327,10 @@ func (c *Conn) Close() error {
 
 // Call sends a request to the server and waits for a response.
 func (c *Conn) Call(ctx context.Context, id ID, method string, params any, result any) error {
-	req := map[string]any{
-		"jsonrpc": "2.0",
-		"method":  method,
-		"params":  params,
-	}
-
-	if !id.IsNull() {
-		req["id"] = id
+	req := &Request[any]{
+		ID:     id,
+		Method: Method(method),
+		Params: params,
 	}
 
 	respCh := make(chan json.RawMessage, 1)
@@ -357,7 +362,7 @@ func (c *Conn) serve(ctx context.Context) error {
 		case <-c.closed:
 			return errors.New("connection closed")
 		default:
-			go c.handleMessage(ctx)
+			c.handleMessage(ctx)
 		}
 	}
 }
@@ -465,9 +470,9 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if err := c.enc.Encode(Response[any, any]{
+	if err := c.enc.Encode(&Response[any, any]{
 		ID:     id,
-		Result: &resp,
+		Result: resp,
 	}); err != nil {
 		return err
 	}
@@ -533,4 +538,20 @@ func (c *Conn) handleNotification(ctx context.Context, msg json.RawMessage) erro
 	}
 
 	return nil
+}
+
+var id atomic.Int64
+
+// Call sends a request to the server and waits for a response.
+// Call returns the result and an error if the request fails.
+// When the result is unsuccessful, the error `jsonrpc2.Error[ErrorData]` type.
+func Call[Result, ErrorData, Params any](ctx context.Context, conn *Conn, method string, params Params) (Result, error) {
+	id := id.Add(1)
+
+	var result Response[Result, ErrorData]
+	if err := conn.Call(ctx, NewID(int(id)), method, params, &result); err != nil {
+		return result.Result, err
+	}
+
+	return result.tuple()
 }
