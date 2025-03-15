@@ -39,6 +39,30 @@ func TestConn_Call(t *testing.T) {
 	}
 }
 
+func TestConn_MethodNotFound(t *testing.T) {
+	r1, w1 := io.Pipe()
+	r2, w2 := io.Pipe()
+
+	conn1 := NewConnection(r1, w2)
+	conn2 := NewConnection(r2, w1)
+
+	RegisterHandler(conn1, "testMethod", &testHandler{})
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	params := map[string]any{"param1": "value1"}
+	_, err := Call[any, any](ctx, conn2, "nonExistentMethod", params)
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+
+	expectedErrMsg := "method not found"
+	if err.Error() != expectedErrMsg {
+		t.Errorf("Expected error message %v, got %v", expectedErrMsg, err.Error())
+	}
+}
+
 func jsonEqual(a, b any) bool {
 	aj, _ := json.Marshal(a)
 	bj, _ := json.Marshal(b)

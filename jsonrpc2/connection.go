@@ -450,7 +450,7 @@ func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
 
 	handler, ok := c.handlers[req.Method]
 	if !ok {
-		return errors.New("method not found")
+		return c.sendError(ctx, req.ID, NewError[any](-32601, "method not found", nil))
 	}
 
 	resp, err := handler(ctx, msg)
@@ -489,7 +489,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if err := c.enc.Encode(Response[any, any]{
+	if err := c.enc.Encode(&Response[any, any]{
 		ID:    id,
 		Error: convertError(err),
 	}); err != nil {
