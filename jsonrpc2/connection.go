@@ -540,6 +540,8 @@ func (c *Conn) handleNotification(ctx context.Context, msg json.RawMessage) erro
 	return nil
 }
 
+// id manages the request ID.
+// The ID is unique and monotonically increasing.
 var id atomic.Uint64
 
 // Call sends a request to the server and waits for a response.
