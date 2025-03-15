@@ -540,7 +540,7 @@ func (c *Conn) handleNotification(ctx context.Context, msg json.RawMessage) erro
 	return nil
 }
 
-var id atomic.Int64
+var id atomic.Uint64
 
 // Call sends a request to the server and waits for a response.
 // Call returns the result and an error if the request fails.
