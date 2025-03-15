@@ -2,6 +2,7 @@ package jsonrpc2
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -198,6 +199,93 @@ func TestResponse_UnmarshalJSON(t *testing.T) {
     }
     if resp.ID != test.expected.ID || fmt.Sprintf("%v", resp.Result) != fmt.Sprintf("%v", test.expected.Result) || resp.Error.Code != test.expected.Error.Code || resp.Error.Message != test.expected.Error.Message {
       t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, resp, test.expected)
+    }
+  }
+}
+
+func TestError_Error(t *testing.T) {
+  tests := []struct {
+    err      Error[any]
+    expected string
+  }{
+    {err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
+    {err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
+  }
+
+  for _, test := range tests {
+    if result := test.err.Error(); result != test.expected {
+      t.Errorf("Error(%v).Error() = %v; want %v", test.err, result, test.expected)
+    }
+  }
+}
+
+func TestError_code(t *testing.T) {
+  tests := []struct {
+    err      Error[any]
+    expected int
+  }{
+    {err: Error[any]{Code: -32000, Message: "error"}, expected: -32000},
+    {err: Error[any]{Code: -32001, Message: "another error"}, expected: -32001},
+  }
+
+  for _, test := range tests {
+    if result := test.err.code(); result != test.expected {
+      t.Errorf("Error(%v).code() = %v; want %v", test.err, result, test.expected)
+    }
+  }
+}
+
+func TestError_message(t *testing.T) {
+  tests := []struct {
+    err      Error[any]
+    expected string
+  }{
+    {err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
+    {err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
+  }
+
+  for _, test := range tests {
+    if result := test.err.message(); result != test.expected {
+      t.Errorf("Error(%v).message() = %v; want %v", test.err, result, test.expected)
+    }
+  }
+}
+
+func TestError_data(t *testing.T) {
+  tests := []struct {
+    err      Error[string]
+    expected string
+  }{
+    {err: Error[string]{Code: -32000, Message: "error", Data: "data"}, expected: "data"},
+    {err: Error[string]{Code: -32001, Message: "another error", Data: "more data"}, expected: "more data"},
+  }
+
+  for _, test := range tests {
+    if result := test.err.data(); result != test.expected {
+      t.Errorf("Error(%v).data() = %v; want %v", test.err, result, test.expected)
+    }
+  }
+}
+
+func TestConvertError(t *testing.T) {
+  tests := []struct {
+    input    error
+    expected Error[any]
+  }{
+    {
+      input:    errors.New("standard error"),
+      expected: Error[any]{Code: -32000, Message: "standard error", Data: errors.New("standard error")},
+    },
+    {
+      input:    NewError(-32001, "custom error", "data"),
+      expected: Error[any]{Code: -32001, Message: "custom error", Data: "data"},
+    },
+  }
+
+  for _, test := range tests {
+    result := convertError(test.input)
+    if result.Code != test.expected.Code || result.Message != test.expected.Message || fmt.Sprintf("%v", result.Data) != fmt.Sprintf("%v", test.expected.Data) {
+      t.Errorf("convertError(%v) = %v; want %v", test.input, result, test.expected)
     }
   }
 }
