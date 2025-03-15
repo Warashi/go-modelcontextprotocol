@@ -95,22 +95,47 @@ type Request[Params any] struct {
 func (r *Request[Params]) MarshalJSON() ([]byte, error) {
 	if r.ID.IsNull() {
 		return json.Marshal(struct {
-			Method Method `json:"method"`
-			Params Params `json:"params,omitempty,omitzero"`
+			JSONRPC string `json:"jsonrpc"`
+			Method  Method `json:"method"`
+			Params  Params `json:"params,omitempty,omitzero"`
 		}{
-			Method: r.Method,
-			Params: r.Params,
+			JSONRPC: "2.0",
+			Method:  r.Method,
+			Params:  r.Params,
 		})
 	}
 	return json.Marshal(struct {
-		ID     ID     `json:"id,omitempty,omitzero"`
-		Method Method `json:"method"`
-		Params Params `json:"params,omitempty,omitzero"`
+		JSONRPC string `json:"jsonrpc"`
+		ID      ID     `json:"id,omitempty,omitzero"`
+		Method  Method `json:"method"`
+		Params  Params `json:"params,omitempty,omitzero"`
 	}{
-		ID:     r.ID,
-		Method: r.Method,
-		Params: r.Params,
+		JSONRPC: "2.0",
+		ID:      r.ID,
+		Method:  r.Method,
+		Params:  r.Params,
 	})
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (r *Request[Params]) UnmarshalJSON(data []byte) error {
+	var req struct {
+		JSONRPC string `json:"jsonrpc"`
+		ID      ID     `json:"id,omitzero"`
+		Method  Method `json:"method"`
+		Params  Params `json:"params,omitempty,omitzero"`
+	}
+	if err := json.Unmarshal(data, &req); err != nil {
+		return err
+	}
+	if req.JSONRPC != "2.0" {
+		return errors.New("invalid JSON-RPC version")
+	}
+
+	r.ID = req.ID
+	r.Method = req.Method
+	r.Params = req.Params
+	return nil
 }
 
 // Response represents a JSON-RPC 2.0 response.
@@ -120,6 +145,42 @@ type Response[Result, ErrorData any] struct {
 	ID     ID                `json:"id,omitempty,omitzero"`
 	Result *Result           `json:"result,omitempty,omitzero"`
 	Error  *Error[ErrorData] `json:"error,omitempty,omitzero"`
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (r *Response[Result, ErrorData]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		JSONRPC string            `json:"jsonrpc"`
+		ID      ID                `json:"id,omitempty,omitzero"`
+		Result  *Result           `json:"result,omitempty,omitzero"`
+		Error   *Error[ErrorData] `json:"error,omitempty,omitzero"`
+	}{
+		JSONRPC: "2.0",
+		ID:      r.ID,
+		Result:  r.Result,
+		Error:   r.Error,
+	})
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (r *Response[Result, ErrorData]) UnmarshalJSON(data []byte) error {
+	var resp struct {
+		JSONRPC string            `json:"jsonrpc"`
+		ID      ID                `json:"id,omitzero"`
+		Result  *Result           `json:"result,omitempty,omitzero"`
+		Error   *Error[ErrorData] `json:"error,omitempty,omitzero"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return err
+	}
+	if resp.JSONRPC != "2.0" {
+		return errors.New("invalid JSON-RPC version")
+	}
+
+	r.ID = resp.ID
+	r.Result = resp.Result
+	r.Error = resp.Error
+	return nil
 }
 
 // Error represents a JSON-RPC 2.0 error.
@@ -371,7 +432,7 @@ func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
 		return errors.New("method not found")
 	}
 
-	resp, err := handler(ctx, req.Params)
+	resp, err := handler(ctx, msg)
 	if err != nil {
 		return c.sendError(ctx, req.ID, err)
 	}
@@ -450,7 +511,7 @@ func (c *Conn) handleNotification(ctx context.Context, msg json.RawMessage) erro
 		return errors.New("method not found")
 	}
 
-	_, err := handler(ctx, req.Params)
+	_, err := handler(ctx, msg)
 	if err != nil {
 		return err
 	}
