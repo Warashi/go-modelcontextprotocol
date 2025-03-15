@@ -255,8 +255,17 @@ func convertError(err error) Error[any] {
 	}
 }
 
+// Handler represents a JSON-RPC 2.0 request handler.
 type Handler[Params, Result any] interface {
 	HandleRequest(ctx context.Context, req Params) (Result, error)
+}
+
+// HandlerFunc represents a JSON-RPC 2.0 request handler function.
+type HandlerFunc[Params, Result any] func(ctx context.Context, req Params) (Result, error)
+
+// HandleRequest calls f(ctx, req).
+func (f HandlerFunc[Params, Result]) HandleRequest(ctx context.Context, req Params) (Result, error) {
+	return f(ctx, req)
 }
 
 func RegisterHandler[Params, Result any](c *Conn, method string, h Handler[Params, Result]) {
@@ -548,6 +557,13 @@ var id atomic.Uint64
 // Call returns the result and an error if the request fails.
 // When the result is unsuccessful, the error `jsonrpc2.Error[ErrorData]` type.
 func Call[Result, ErrorData, Params any](ctx context.Context, conn *Conn, method string, params Params) (Result, error) {
+	select {
+	case <-ctx.Done():
+		var zero Result
+		return zero, ctx.Err()
+	default:
+	}
+
 	id := id.Add(1)
 
 	var result Response[Result, ErrorData]
@@ -556,4 +572,21 @@ func Call[Result, ErrorData, Params any](ctx context.Context, conn *Conn, method
 	}
 
 	return result.tuple()
+}
+
+// Notify sends a notification to the server.
+// Notify returns an error if the request fails.
+func Notify[Params any](ctx context.Context, conn *Conn, method string, params Params) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	req := &Request[Params]{
+		Method: Method(method),
+		Params: params,
+	}
+
+	return conn.enc.Encode(req)
 }
