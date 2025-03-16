@@ -289,6 +289,12 @@ func WithHandler[Params, Result any](method string, h Handler[Params, Result]) C
 	}
 }
 
+func WithHandlerFunc[Params, Result any](method string, h HandlerFunc[Params, Result]) ConnectionInitializationOption {
+	return func(c *Conn) {
+		RegisterHandler(c, method, h)
+	}
+}
+
 // Conn represents a JSON-RPC 2.0 connection.
 type Conn struct {
 	reader   io.Reader
