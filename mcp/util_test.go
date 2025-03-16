@@ -8,6 +8,8 @@ import (
 
 // assertJSONEqual checks if two JSON strings are equal.
 func assertJSONEqual(t *testing.T, expected, actual string) {
+	t.Helper()
+
 	var expectedJSON, actualJSON interface{}
 
 	if err := json.Unmarshal([]byte(expected), &expectedJSON); err != nil {
