@@ -321,9 +321,33 @@ func NewConnection(r io.Reader, w io.Writer, opts ...ConnectionInitializationOpt
 		opt(conn)
 	}
 
-	go conn.serve(context.Background())
-
 	return conn
+}
+
+// Open opens the connection.
+// Open returns an error if the connection is already closed.
+// Open starts message processing in a new goroutine.
+func (c *Conn) Open() error {
+	select {
+	case <-c.closed:
+		return errors.New("connection closed")
+	default:
+	}
+
+	go c.serve(context.Background())
+	return nil
+}
+
+// Serve starts serving requests.
+// Serve will return an error if the connection is closed.
+func (c *Conn) Serve(ctx context.Context) error {
+	select {
+	case <-c.closed:
+		return errors.New("connection closed")
+	default:
+	}
+
+	return c.serve(ctx)
 }
 
 // Close closes the connection.

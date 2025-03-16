@@ -20,8 +20,10 @@ func TestConn_Call(t *testing.T) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
 
-	_ = NewConnection(r1, w2, WithHandler("testMethod", &testHandler{}))
+	conn1 := NewConnection(r1, w2, WithHandler("testMethod", &testHandler{}))
+	go conn1.Serve(t.Context())
 	conn2 := NewConnection(r2, w1)
+	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
@@ -42,8 +44,10 @@ func TestConn_MethodNotFound(t *testing.T) {
 	r1, w1 := io.Pipe()
 	r2, w2 := io.Pipe()
 
-	_ = NewConnection(r1, w2, WithHandler("testMethod", &testHandler{}))
+	conn1 := NewConnection(r1, w2, WithHandler("testMethod", &testHandler{}))
+	go conn1.Serve(t.Context())
 	conn2 := NewConnection(r2, w1)
+	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
@@ -72,11 +76,13 @@ func TestConn_Notification(t *testing.T) {
 
 	var called atomic.Bool
 
-	_ = NewConnection(r1, w2, WithHandler("testMethod", HandlerFunc[any, any](func(ctx context.Context, req any) (any, error) {
+	conn1 := NewConnection(r1, w2, WithHandler("testMethod", HandlerFunc[any, any](func(ctx context.Context, req any) (any, error) {
 		called.Store(true)
 		return nil, nil
 	})))
+	go conn1.Serve(t.Context())
 	conn2 := NewConnection(r2, w1)
+	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cancel()
