@@ -107,7 +107,7 @@ func (r *Request[Params]) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(struct {
 		JSONRPC string `json:"jsonrpc"`
-		ID      ID     `json:"id,omitempty,omitzero"`
+		ID      ID     `json:"id,omitzero"`
 		Method  Method `json:"method"`
 		Params  Params `json:"params,omitempty,omitzero"`
 	}{
@@ -143,18 +143,18 @@ func (r *Request[Params]) UnmarshalJSON(data []byte) error {
 // The response object must contain a unique ID.
 // The response object may contain a result or an error.
 type Response[Result, ErrorData any] struct {
-	ID     ID               `json:"id,omitempty,omitzero"`
+	ID     ID               `json:"id,omitzero"`
 	Result Result           `json:"result,omitempty,omitzero"`
-	Error  Error[ErrorData] `json:"error,omitempty,omitzero"`
+	Error  Error[ErrorData] `json:"error,omitzero"`
 }
 
 // MarshalJSON implements the json.Marshaler interface.
 func (r *Response[Result, ErrorData]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		JSONRPC string           `json:"jsonrpc"`
-		ID      ID               `json:"id,omitempty,omitzero"`
+		ID      ID               `json:"id,omitzero"`
 		Result  Result           `json:"result,omitempty,omitzero"`
-		Error   Error[ErrorData] `json:"error,omitempty,omitzero"`
+		Error   Error[ErrorData] `json:"error,omitzero"`
 	}{
 		JSONRPC: "2.0",
 		ID:      r.ID,
@@ -169,7 +169,7 @@ func (r *Response[Result, ErrorData]) UnmarshalJSON(data []byte) error {
 		JSONRPC string           `json:"jsonrpc"`
 		ID      ID               `json:"id,omitzero"`
 		Result  Result           `json:"result,omitempty,omitzero"`
-		Error   Error[ErrorData] `json:"error,omitempty,omitzero"`
+		Error   Error[ErrorData] `json:"error,omitzero"`
 	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return err
