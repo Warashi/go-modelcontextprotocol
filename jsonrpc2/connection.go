@@ -467,6 +467,12 @@ func getMessageType(msg json.RawMessage) (messageType, error) {
 
 // handleRequest handles a JSON-RPC 2.0 request message.
 func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	var req Request[json.RawMessage]
 	if err := json.Unmarshal(msg, &req); err != nil {
 		return err
@@ -487,6 +493,12 @@ func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
 
 // sendResponse sends a JSON-RPC 2.0 response message.
 func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	if id.IsNull() {
 		return errors.New("invalid response ID")
 	}
@@ -506,6 +518,12 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 
 // sendError sends a JSON-RPC 2.0 error response message.
 func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	if id.IsNull() {
 		return errors.New("invalid error ID")
 	}
@@ -525,6 +543,12 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 
 // handleResponse handles a JSON-RPC 2.0 response message.
 func (c *Conn) handleResponse(ctx context.Context, msg json.RawMessage) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	var resp Response[json.RawMessage, json.RawMessage]
 	if err := json.Unmarshal(msg, &resp); err != nil {
 		return err
