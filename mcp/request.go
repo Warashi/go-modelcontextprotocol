@@ -72,10 +72,12 @@ func (id ProgressToken) MarshalJSON() ([]byte, error) {
 	}
 }
 
+type RequestMeta struct {
+	ProgressToken ProgressToken `json:"progressToken"`
+}
+
 type Request[Params any] struct {
-	Meta struct {
-		ProgressToken ProgressToken
-	}
+	Meta   RequestMeta
 	Params Params
 }
 
@@ -87,7 +89,7 @@ func (r *Request[Params]) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if err := json.Unmarshal(b, &v); err != nil {
 		return nil, err
 	}
