@@ -2,46 +2,85 @@ package mcp
 
 import (
 	"context"
-
-	"github.com/Warashi/go-modelcontextprotocol/jsonrpc2"
 )
 
-type InitializationRequestParams struct{
-	ProtocolVersion string `json:"protocolVersion"`
-	Capabilities struct {
-		Roots *struct{
-			ListChanged bool `json:"listChanged,omitempty,omitzero"`
-		} `json:"roots,omitempty,omitzero"`
-		Sampling *struct{} `json:"sampling,omitempty,omitzero"`
-	} `json:"capabilities,omitzero"`
-	ClientInfo struct {
-		Name string `json:"name"`
-		Version string `json:"version"`
-	} `json:"clientInfo"`
+// RootsCapabilities is the capabilities for the roots feature.
+type RootsCapabilities struct {
+	ListChanged bool `json:"listChanged,omitempty,omitzero"`
 }
 
-type InitializationResponseData struct{
-	ProtocolVersion string `json:"protocolVersion"`
-	Capabilities struct {
-		Logging *struct{} `json:"logging,omitempty,omitzero"`
-		Prompts *struct{
-			ListChanged bool `json:"listChanged,omitempty,omitzero"`
-		} `json:"prompts,omitempty,omitzero"`
-		Resources *struct{
-			Subscribe bool `json:"subscribe,omitempty,omitzero"`
-			ListChanged bool `json:"listChanged,omitempty,omitzero"`
-		} `json:"resources,omitempty,omitzero"`
-		Tools *struct{
-			ListChanged bool `json:"listChanged,omitempty,omitzero"`
-		} `json:"tools,omitempty,omitzero"`
-	} `json:"capabilities"`
-	ServerInfo struct {
-		Name string `json:"name"`
-		Version string `json:"version"`
-	} `json:"serverInfo"`
+// SamplingCapabilities is the capabilities for the sampling feature.
+type SamplingCapabilities struct{}
+
+// ClientInfoData is the data for the client info.
+type ClientInfoData struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
+// InitializationRequestCapabilities is the capabilities for the initialization request.
+type InitializationRequestCapabilities struct {
+	Roots    *RootsCapabilities    `json:"roots,omitempty,omitzero"`
+	Sampling *SamplingCapabilities `json:"sampling,omitempty,omitzero"`
+}
+
+// InitializationRequestParams is the params for the initialization request.
+type InitializationRequestParams struct {
+	ProtocolVersion string                            `json:"protocolVersion"`
+	Capabilities    InitializationRequestCapabilities `json:"capabilities,omitzero"`
+	ClientInfo      ClientInfoData                    `json:"clientInfo"`
+}
+
+// LoggingCapabilities is the capabilities for the logging feature.
+type LoggingCapabilities struct{}
+
+// PromptsCapabilities is the capabilities for the prompts feature.
+type PromptsCapabilities struct {
+	ListChanged bool `json:"listChanged,omitempty,omitzero"`
+}
+
+// ResourcesCapabilities is the capabilities for the resources feature.
+type ResourcesCapabilities struct {
+	Subscribe   bool `json:"subscribe,omitempty,omitzero"`
+	ListChanged bool `json:"listChanged,omitempty,omitzero"`
+}
+
+// ToolsCapabilities is the capabilities for the tools feature.
+type ToolsCapabilities struct {
+	ListChanged bool `json:"listChanged,omitempty,omitzero"`
+}
+
+// ServerInfoData is the data for the server info.
+type ServerInfoData struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// Capabilities is the capabilities for the server.
+type Capabilities struct {
+	Logging   *LoggingCapabilities   `json:"logging,omitempty,omitzero"`
+	Prompts   *PromptsCapabilities   `json:"prompts,omitempty,omitzero"`
+	Resources *ResourcesCapabilities `json:"resources,omitempty,omitzero"`
+	Tools     *ToolsCapabilities     `json:"tools,omitempty,omitzero"`
+}
+
+// InitializationResponseData is the data for the initialization response.
+type InitializationResponseData struct {
+	ProtocolVersion string         `json:"protocolVersion"`
+	Capabilities    Capabilities   `json:"capabilities"`
+	ServerInfo      ServerInfoData `json:"serverInfo"`
+}
+
+// Initialize initializes the server.
 func (s *Server) Initialize(ctx context.Context, request *Request[InitializationRequestParams]) (*Result[InitializationResponseData], error) {
-	// TODO: Implement this method
-	return nil, jsonrpc2.NewError(-32601, "Method not found", struct{}{})
+	return &Result[InitializationResponseData]{
+		Data: InitializationResponseData{
+			ProtocolVersion: "2024-11-05",
+			Capabilities:    Capabilities{},
+			ServerInfo: ServerInfoData{
+				Name:    s.name,
+				Version: s.version,
+			},
+		},
+	}, nil
 }

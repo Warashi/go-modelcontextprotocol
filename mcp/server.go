@@ -11,11 +11,18 @@ import (
 type ServerOption func(*Server)
 
 type Server struct {
+	name    string
+	version string
+
 	conn *jsonrpc2.Conn
 }
 
-func NewServer(r io.Reader, w io.Writer, opts ...ServerOption) *Server {
-	s := new(Server)
+func NewServer(name, version string, r io.Reader, w io.Writer, opts ...ServerOption) *Server {
+	s := &Server{
+		name:    name,
+		version: version,
+	}
+
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -31,8 +38,8 @@ func NewServer(r io.Reader, w io.Writer, opts ...ServerOption) *Server {
 	return s
 }
 
-func NewStdioServer(opts ...ServerOption) *Server {
-	return NewServer(os.Stdin, os.Stdout, opts...)
+func NewStdioServer(name, version string, opts ...ServerOption) *Server {
+	return NewServer(name, version, os.Stdin, os.Stdout, opts...)
 }
 
 func (s *Server) Serve(ctx context.Context) error {

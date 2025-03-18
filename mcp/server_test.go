@@ -8,7 +8,7 @@ import (
 
 func TestNewServer(t *testing.T) {
 	r, w := io.Pipe()
-	server := NewServer(r, w)
+	server := NewServer("test", "1.0.0", r, w)
 
 	if server == nil {
 		t.Fatal("expected server to be non-nil")
@@ -19,7 +19,7 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestNewStdioServer(t *testing.T) {
-	server := NewStdioServer()
+	server := NewStdioServer("test", "1.0.0")
 
 	if server == nil {
 		t.Fatal("expected server to be non-nil")
@@ -31,7 +31,7 @@ func TestNewStdioServer(t *testing.T) {
 
 func TestServer_Serve(t *testing.T) {
 	r, w := io.Pipe()
-	server := NewServer(r, w)
+	server := NewServer("test", "1.0.0", r, w)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -46,7 +46,7 @@ func TestServer_Serve(t *testing.T) {
 
 func TestServer_Close(t *testing.T) {
 	r, w := io.Pipe()
-	server := NewServer(r, w)
+	server := NewServer("test", "1.0.0", r, w)
 
 	if err := server.Close(); err != nil {
 		t.Errorf("Close() error = %v", err)
