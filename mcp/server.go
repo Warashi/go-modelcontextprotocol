@@ -21,7 +21,10 @@ func NewServer(r io.Reader, w io.Writer, opts ...ServerOption) *Server {
 	}
 
 	var initOpts []jsonrpc2.ConnectionInitializationOption
-	initOpts = append(initOpts, jsonrpc2.WithHandlerFunc("ping", s.Ping))
+	initOpts = append(initOpts,
+		jsonrpc2.WithHandlerFunc("ping", s.Ping),
+		jsonrpc2.WithHandlerFunc("initialize", s.Initialize),
+	)
 
 	s.conn = jsonrpc2.NewConnection(r, w, initOpts...)
 
