@@ -2,6 +2,6 @@ package mcp
 
 import "context"
 
-func (s *Server) Ping(ctx context.Context, _ struct{}) (struct{}, error) {
-	return struct{}{}, nil
+func (s *Server) Ping(ctx context.Context, _ *Request[struct{}]) (*Result[struct{}], error) {
+	return &Result[struct{}]{}, nil
 }
