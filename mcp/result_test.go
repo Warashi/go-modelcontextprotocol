@@ -6,22 +6,22 @@ import (
 )
 
 func TestResult_MarshalJSON(t *testing.T) {
-	type Params struct {
+	type Data struct {
 		Field1 string `json:"field1"`
 		Field2 int    `json:"field2"`
 	}
 
 	tests := []struct {
 		name         string
-		notification Result[Params]
+		notification Result[Data]
 		want         string
 		wantErr      bool
 	}{
 		{
 			name: "with meta",
-			notification: Result[Params]{
+			notification: Result[Data]{
 				Meta: map[string]any{"meta1": "value1"},
-				Params: Params{
+				Data: Data{
 					Field1: "value1",
 					Field2: 2,
 				},
@@ -31,8 +31,8 @@ func TestResult_MarshalJSON(t *testing.T) {
 		},
 		{
 			name: "without meta",
-			notification: Result[Params]{
-				Params: Params{
+			notification: Result[Data]{
+				Data: Data{
 					Field1: "value1",
 					Field2: 2,
 				},
@@ -55,7 +55,7 @@ func TestResult_MarshalJSON(t *testing.T) {
 }
 
 func TestResult_UnmarshalJSON(t *testing.T) {
-	type Params struct {
+	type Data struct {
 		Field1 string `json:"field1"`
 		Field2 int    `json:"field2"`
 	}
@@ -63,15 +63,15 @@ func TestResult_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    string
-		want    Result[Params]
+		want    Result[Data]
 		wantErr bool
 	}{
 		{
 			name: "with meta",
 			data: `{"field1":"value1","field2":2,"_meta":{"meta1":"value1"}}`,
-			want: Result[Params]{
+			want: Result[Data]{
 				Meta: map[string]any{"meta1": "value1"},
-				Params: Params{
+				Data: Data{
 					Field1: "value1",
 					Field2: 2,
 				},
@@ -81,8 +81,8 @@ func TestResult_UnmarshalJSON(t *testing.T) {
 		{
 			name: "without meta",
 			data: `{"field1":"value1","field2":2}`,
-			want: Result[Params]{
-				Params: Params{
+			want: Result[Data]{
+				Data: Data{
 					Field1: "value1",
 					Field2: 2,
 				},
@@ -93,7 +93,7 @@ func TestResult_UnmarshalJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var got Result[Params]
+			var got Result[Data]
 			if err := got.UnmarshalJSON([]byte(tt.data)); (err != nil) != tt.wantErr {
 				t.Errorf("UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return

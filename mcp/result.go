@@ -2,16 +2,16 @@ package mcp
 
 import "encoding/json"
 
-type Result[Params any] struct {
-	Meta   map[string]any
-	Params Params
+type Result[Data any] struct {
+	Meta map[string]any
+	Data Data
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (r *Result[Params]) MarshalJSON() ([]byte, error) {
+func (r *Result[Data]) MarshalJSON() ([]byte, error) {
 	v := make(map[string]json.RawMessage)
 
-	b, err := json.Marshal(r.Params)
+	b, err := json.Marshal(r.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (r *Result[Params]) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (r *Result[Params]) UnmarshalJSON(data []byte) error {
+func (r *Result[Data]) UnmarshalJSON(data []byte) error {
 	v := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
@@ -49,5 +49,5 @@ func (r *Result[Params]) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, &r.Params)
+	return json.Unmarshal(data, &r.Data)
 }
