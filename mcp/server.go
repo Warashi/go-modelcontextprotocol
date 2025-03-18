@@ -39,7 +39,3 @@ func (s *Server) Serve(ctx context.Context) error {
 func (s *Server) Close() error {
 	return s.conn.Close()
 }
-
-func (s *Server) Ping(ctx context.Context, _ struct{}) (struct{}, error) {
-	return struct{}{}, nil
-}
