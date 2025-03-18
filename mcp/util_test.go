@@ -10,7 +10,7 @@ import (
 func assertJSONEqual(t *testing.T, expected, actual string) {
 	t.Helper()
 
-	var expectedJSON, actualJSON interface{}
+	var expectedJSON, actualJSON any
 
 	if err := json.Unmarshal([]byte(expected), &expectedJSON); err != nil {
 		t.Fatalf("Failed to unmarshal expected JSON: %s", err)
