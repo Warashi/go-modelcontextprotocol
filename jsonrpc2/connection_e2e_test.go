@@ -93,6 +93,9 @@ func TestConn_Notification(t *testing.T) {
 		t.Fatalf("Notify failed: %v", err)
 	}
 
+	// Notify is asynchronous, so we need to wait for the handler to be called.
+	time.Sleep(1 * time.Millisecond)
+
 	if !called.Load() {
 		t.Errorf("Handler not called")
 	}
