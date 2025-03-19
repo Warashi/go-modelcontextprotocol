@@ -155,6 +155,7 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 // if the result is already a ToolCallResultContent, it returns the result as is.
 // if the result is a string, it converts the result to the ToolCallResultTextContent.
 // if the result implements encoding.TextMarshaler, calls MarshalText and returns the result as the ToolCallResultTextContent.
+// if the result implements fmt.Stringer, it returns the result as the ToolCallResultTextContent.
 // otherwise, it calls json.Marshal and returns the result as the ToolCallResultTextContent.
 func convertToToolCallResultContent(v any) (ToolCallResultContent, error) {
 	switch v := v.(type) {
@@ -175,6 +176,10 @@ func convertToToolCallResultContent(v any) (ToolCallResultContent, error) {
 		}
 		return &ToolCallResultTextContent{
 			Text: string(text),
+		}, nil
+	case fmt.Stringer:
+		return &ToolCallResultTextContent{
+			Text: v.String(),
 		}, nil
 	default:
 		b, err := json.Marshal(v)
