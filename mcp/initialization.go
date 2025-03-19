@@ -4,6 +4,10 @@ import (
 	"context"
 )
 
+const (
+	SupportedProtocolVersion = "2024-11-05"
+)
+
 // RootsCapabilities is the capabilities for the roots feature.
 type RootsCapabilities struct {
 	ListChanged bool `json:"listChanged,omitempty,omitzero"`
@@ -75,7 +79,7 @@ type InitializationResponseData struct {
 func (s *Server) Initialize(ctx context.Context, request *Request[InitializationRequestParams]) (*Result[InitializationResponseData], error) {
 	result := &Result[InitializationResponseData]{
 		Data: InitializationResponseData{
-			ProtocolVersion: "2024-11-05",
+			ProtocolVersion: SupportedProtocolVersion,
 			Capabilities:    Capabilities{},
 			ServerInfo: ServerInfoData{
 				Name:    s.name,
