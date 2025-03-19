@@ -73,7 +73,7 @@ type InitializationResponseData struct {
 
 // Initialize initializes the server.
 func (s *Server) Initialize(ctx context.Context, request *Request[InitializationRequestParams]) (*Result[InitializationResponseData], error) {
-	return &Result[InitializationResponseData]{
+	result := &Result[InitializationResponseData]{
 		Data: InitializationResponseData{
 			ProtocolVersion: "2024-11-05",
 			Capabilities:    Capabilities{},
@@ -82,5 +82,17 @@ func (s *Server) Initialize(ctx context.Context, request *Request[Initialization
 				Version: s.version,
 			},
 		},
-	}, nil
+	}
+
+	if len(s.tools) > 0 {
+		// we have tools
+		result.Data.Capabilities.Tools = &ToolsCapabilities{}
+	}
+
+	if (len(s.resources) > 0  || len(s.resourceTemplates) > 0) && s.resourceReader != nil {
+		// we have resources and a resource reader
+		result.Data.Capabilities.Resources = &ResourcesCapabilities{}
+	}
+
+	return result, nil
 }
