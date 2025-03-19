@@ -34,6 +34,27 @@ func WithTool(name string, tool tool) ServerOption {
 	}
 }
 
+// WithResource sets a resource for the server.
+func WithResource(resource Resource) ServerOption {
+	return func(s *Server) {
+		s.resources = append(s.resources, resource)
+	}
+}
+
+// WithResourceTemplate sets a resource template for the server.
+func WithResourceTemplate(template ResourceTemplate) ServerOption {
+	return func(s *Server) {
+		s.resourceTemplates = append(s.resourceTemplates, template)
+	}
+}
+
+// WithResourceReader sets a resource reader for the server.
+func WithResourceReader(reader ResourceReader) ServerOption {
+	return func(s *Server) {
+		s.resourceReader = reader
+	}
+}
+
 // Server is a MCP server.
 type Server struct {
 	name    string
@@ -42,6 +63,10 @@ type Server struct {
 	initOpts []jsonrpc2.ConnectionInitializationOption
 
 	tools map[string]tool
+	
+	resources []Resource
+	resourceTemplates []ResourceTemplate
+	resourceReader ResourceReader
 
 	conn *jsonrpc2.Conn
 }
@@ -63,6 +88,9 @@ func NewServer(name, version string, r io.Reader, w io.Writer, opts ...ServerOpt
 		jsonrpc2.WithHandlerFunc("initialize", s.Initialize),
 		jsonrpc2.WithHandlerFunc("tools/list", s.ListTools),
 		jsonrpc2.WithHandlerFunc("tools/call", s.CallTool),
+		jsonrpc2.WithHandlerFunc("resources/list", s.ListResources),
+		jsonrpc2.WithHandlerFunc("resources/read", s.ReadResource),
+		jsonrpc2.WithHandlerFunc("resources/templates/list", s.ListResourceTemplates),
 	)
 
 	initOpts = append(initOpts, s.initOpts...)
