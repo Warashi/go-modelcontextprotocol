@@ -146,7 +146,7 @@ func (t *ImageContent) MarshalJSON() ([]byte, error) {
 // EmbeddedResource is the embedded resource content of the tool call result.
 // TODO: add Annotations field
 type EmbeddedResource struct {
-	// TODO: 埋め込みリソースの型を定義する
+	Resource Resource `json:"resource"`
 }
 
 // isContent implements isContent.
@@ -154,7 +154,10 @@ func (EmbeddedResource) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
 func (t *EmbeddedResource) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("not implemented")
+	return json.Marshal(map[string]any{
+		"type":     "resource",
+		"resource": t.Resource,
+	})
 }
 
 // Handle handles the tool call.
