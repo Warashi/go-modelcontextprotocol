@@ -41,3 +41,31 @@ func (o *Object) MarshalSchema() (json.RawMessage, error) {
 
 	return json.Marshal(obj)
 }
+
+// Validate validates the object against the JSON schema.
+func (o *Object) Validate(v any) error {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return fmt.Errorf("object is not a map")
+	}
+
+	for _, r := range o.Required {
+		if _, ok := m[r]; !ok {
+			return fmt.Errorf("required property %s not found", r)
+		}
+	}
+
+	for k := range m {
+		if _, ok := o.Properties[k]; !ok {
+			return fmt.Errorf("unexpected property %s", k)
+		}
+	}
+
+	for k, v := range o.Properties {
+		if err := v.Validate(m[k]); err != nil {
+			return fmt.Errorf("property %s: %w", k, err)
+		}
+	}
+
+	return nil
+}
