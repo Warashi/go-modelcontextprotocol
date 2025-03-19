@@ -21,6 +21,7 @@ func (o *Object) MarshalJSON() ([]byte, error) {
 
 	obj := map[string]any{
 		"type": "object",
+		"additionalProperties": false, // we set this to false for simplicity
 	}
 
 	if len(o.Required) > 0 {

@@ -21,7 +21,7 @@ func TestObject_MarshalJSON(t *testing.T) {
 				},
 				Required: []string{"prop1"},
 			},
-			want:    `{"properties":{"prop1":{"type":"string"}},"required":["prop1"],"type":"object"}`,
+			want:    `{"additionalProperties":false,"properties":{"prop1":{"type":"string"}},"required":["prop1"],"type":"object"}`,
 			wantErr: false,
 		},
 		{
