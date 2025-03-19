@@ -57,7 +57,7 @@ type ToolCallRequestParams struct {
 // ToolCallResultData is the result of the tool call.
 type ToolCallResultData struct {
 	IsError bool                    `json:"isError"`
-	Content []ToolCallResultContent `json:"content"`
+	Content []isContent `json:"content"`
 }
 
 // CallTool implements the jsonrpc2.HandlerFunc
@@ -102,39 +102,40 @@ func (f ToolHandlerFunc[Input]) Handle(ctx context.Context, input Input) ([]any,
 	return f(ctx, input)
 }
 
-type ToolCallResultContent interface {
-	isToolCallResultContent()
+// isContent is an interface for the content of the tool call result.
+type isContent interface {
+	isContent()
 }
 
-// ToolCallResultTextContent is the text content of the tool call result.
+// TextContent is the text content of the tool call result.
 // TODO: add Annotations field
-type ToolCallResultTextContent struct {
+type TextContent struct {
 	Text string `json:"text"`
 }
 
-// isToolCallResultContent implements ToolCallResultContent.
-func (ToolCallResultTextContent) isToolCallResultContent() {}
+// isContent implements isContent.
+func (TextContent) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
-func (t *ToolCallResultTextContent) MarshalJSON() ([]byte, error) {
+func (t *TextContent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type": "text",
 		"text": t.Text,
 	})
 }
 
-// ToolCallResultImageContent is the image content of the tool call result.
+// ImageContent is the image content of the tool call result.
 // TODO: add Annotations field
-type ToolCallResultImageContent struct {
+type ImageContent struct {
 	Data     []byte `json:"data"`
 	MimeType string `json:"mimeType"`
 }
 
-// isToolCallResultContent implements ToolCallResultContent.
-func (ToolCallResultImageContent) isToolCallResultContent() {}
+// isContent implements isContent.
+func (ImageContent) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
-func (t *ToolCallResultImageContent) MarshalJSON() ([]byte, error) {
+func (t *ImageContent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type":     "image",
 		"data":     base64.StdEncoding.EncodeToString(t.Data),
@@ -142,17 +143,17 @@ func (t *ToolCallResultImageContent) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// ToolCallResultEmbeddedResourceContent is the embedded resource content of the tool call result.
+// EmbeddedResource is the embedded resource content of the tool call result.
 // TODO: add Annotations field
-type ToolCallResultEmbeddedResourceContent struct {
+type EmbeddedResource struct {
 	// TODO: 埋め込みリソースの型を定義する
 }
 
-// isToolCallResultContent implements ToolCallResultContent.
-func (ToolCallResultEmbeddedResourceContent) isToolCallResultContent() {}
+// isContent implements isContent.
+func (EmbeddedResource) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
-func (t *ToolCallResultEmbeddedResourceContent) MarshalJSON() ([]byte, error) {
+func (t *EmbeddedResource) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
@@ -161,8 +162,8 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 	if err := t.Validate(input); err != nil {
 		return &ToolCallResultData{
 			IsError: true,
-			Content: []ToolCallResultContent{
-				&ToolCallResultTextContent{
+			Content: []isContent{
+				&TextContent{
 					Text: err.Error(),
 				},
 			},
@@ -173,8 +174,8 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 	if err := json.Unmarshal(input, &inputInput); err != nil {
 		return &ToolCallResultData{
 			IsError: true,
-			Content: []ToolCallResultContent{
-				&ToolCallResultTextContent{
+			Content: []isContent{
+				&TextContent{
 					Text: err.Error(),
 				},
 			},
@@ -185,22 +186,22 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 	if err != nil {
 		return &ToolCallResultData{
 			IsError: true,
-			Content: []ToolCallResultContent{
-				&ToolCallResultTextContent{
+			Content: []isContent{
+				&TextContent{
 					Text: err.Error(),
 				},
 			},
 		}, nil
 	}
 
-	contents := make([]ToolCallResultContent, 0, len(result))
+	contents := make([]isContent, 0, len(result))
 	for _, r := range result {
-		content, err := convertToToolCallResultContent(r)
+		content, err := convertToContent(r)
 		if err != nil {
 			return &ToolCallResultData{
 				IsError: true,
-				Content: []ToolCallResultContent{
-					&ToolCallResultTextContent{
+				Content: []isContent{
+					&TextContent{
 						Text: err.Error(),
 					},
 				},
@@ -215,34 +216,34 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 	}, nil
 }
 
-// convertToToolCallResultContent converts the result to the ToolCallResultContent.
+// convertToContent converts the result to the ToolCallResultContent.
 // if the result is already a ToolCallResultContent, it returns the result as is.
 // if the result is a string, it converts the result to the ToolCallResultTextContent.
 // if the result implements encoding.TextMarshaler, calls MarshalText and returns the result as the ToolCallResultTextContent.
 // if the result implements fmt.Stringer, it returns the result as the ToolCallResultTextContent.
 // otherwise, it calls json.Marshal and returns the result as the ToolCallResultTextContent.
-func convertToToolCallResultContent(v any) (ToolCallResultContent, error) {
+func convertToContent(v any) (isContent, error) {
 	switch v := v.(type) {
 	case string:
-		return &ToolCallResultTextContent{
+		return &TextContent{
 			Text: v,
 		}, nil
-	case *ToolCallResultTextContent:
+	case *TextContent:
 		return v, nil
-	case *ToolCallResultImageContent:
+	case *ImageContent:
 		return v, nil
-	case *ToolCallResultEmbeddedResourceContent:
+	case *EmbeddedResource:
 		return v, nil
 	case encoding.TextMarshaler:
 		text, err := v.MarshalText()
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal text: %w", err)
 		}
-		return &ToolCallResultTextContent{
+		return &TextContent{
 			Text: string(text),
 		}, nil
 	case fmt.Stringer:
-		return &ToolCallResultTextContent{
+		return &TextContent{
 			Text: v.String(),
 		}, nil
 	default:
@@ -250,7 +251,7 @@ func convertToToolCallResultContent(v any) (ToolCallResultContent, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal result: %w", err)
 		}
-		return &ToolCallResultTextContent{
+		return &TextContent{
 			Text: string(b),
 		}, nil
 	}
