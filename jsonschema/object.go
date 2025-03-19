@@ -11,8 +11,8 @@ type Object struct {
 	Required   []string
 }
 
-// MarshalSchema marshals the object into a JSON schema.
-func (o *Object) MarshalSchema() (json.RawMessage, error) {
+// MarshalJSON implements the json.Marshaler interface.
+func (o *Object) MarshalJSON() ([]byte, error) {
 	for _, r := range o.Required {
 		if _, ok := o.Properties[r]; !ok {
 			return nil, fmt.Errorf("required property %s not found", r)
@@ -30,11 +30,7 @@ func (o *Object) MarshalSchema() (json.RawMessage, error) {
 	if len(o.Properties) > 0 {
 		properties := make(map[string]any)
 		for k, v := range o.Properties {
-			var err error
-			properties[k], err = v.MarshalSchema()
-			if err != nil {
-				return nil, err
-			}
+			properties[k] = v
 		}
 		obj["properties"] = properties
 	}

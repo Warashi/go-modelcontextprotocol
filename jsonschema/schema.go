@@ -4,13 +4,9 @@ import "encoding/json"
 
 type Schema interface {
 	SchemaValidator
-	SchemaMarshaler
+	json.Marshaler
 }
 
 type SchemaValidator interface {
 	Validate(v any) error
-}
-
-type SchemaMarshaler interface {
-	MarshalSchema() (json.RawMessage, error)
 }
