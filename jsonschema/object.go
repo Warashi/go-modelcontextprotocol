@@ -12,7 +12,7 @@ type Object struct {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (o *Object) MarshalJSON() ([]byte, error) {
+func (o Object) MarshalJSON() ([]byte, error) {
 	for _, r := range o.Required {
 		if _, ok := o.Properties[r]; !ok {
 			return nil, fmt.Errorf("required property %s not found", r)
@@ -40,7 +40,7 @@ func (o *Object) MarshalJSON() ([]byte, error) {
 }
 
 // Validate validates the object against the JSON schema.
-func (o *Object) Validate(v any) error {
+func (o Object) Validate(v any) error {
 	m, ok := v.(map[string]any)
 	if !ok {
 		return fmt.Errorf("object is not a map")

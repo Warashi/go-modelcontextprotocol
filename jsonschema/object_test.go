@@ -17,7 +17,7 @@ func TestObject_MarshalJSON(t *testing.T) {
 			name: "valid object",
 			object: jsonschema.Object{
 				Properties: map[string]jsonschema.Schema{
-					"prop1": &jsonschema.String{},
+					"prop1": jsonschema.String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -60,7 +60,7 @@ func TestObject_Validate(t *testing.T) {
 			name: "valid object",
 			object: jsonschema.Object{
 				Properties: map[string]jsonschema.Schema{
-					"prop1": &jsonschema.String{},
+					"prop1": jsonschema.String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -73,7 +73,7 @@ func TestObject_Validate(t *testing.T) {
 			name: "missing required property",
 			object: jsonschema.Object{
 				Properties: map[string]jsonschema.Schema{
-					"prop1": &jsonschema.String{},
+					"prop1": jsonschema.String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -84,7 +84,7 @@ func TestObject_Validate(t *testing.T) {
 			name: "unexpected property",
 			object: jsonschema.Object{
 				Properties: map[string]jsonschema.Schema{
-					"prop1": &jsonschema.String{},
+					"prop1": jsonschema.String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -98,7 +98,7 @@ func TestObject_Validate(t *testing.T) {
 			name: "invalid property value",
 			object: jsonschema.Object{
 				Properties: map[string]jsonschema.Schema{
-					"prop1": &jsonschema.String{},
+					"prop1": jsonschema.String{},
 				},
 				Required: []string{"prop1"},
 			},

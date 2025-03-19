@@ -12,7 +12,7 @@ type String struct {
 }
 
 // Validate validates the string against the JSON schema.
-func (s *String) Validate(v any) error {
+func (s String) Validate(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("value is not a string")
