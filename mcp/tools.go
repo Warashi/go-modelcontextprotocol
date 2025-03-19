@@ -107,6 +107,7 @@ type ToolCallResultContent interface {
 }
 
 // ToolCallResultTextContent is the text content of the tool call result.
+// TODO: add Annotations field
 type ToolCallResultTextContent struct {
 	Text string `json:"text"`
 }
@@ -123,6 +124,7 @@ func (t *ToolCallResultTextContent) MarshalJSON() ([]byte, error) {
 }
 
 // ToolCallResultImageContent is the image content of the tool call result.
+// TODO: add Annotations field
 type ToolCallResultImageContent struct {
 	Data     []byte `json:"data"`
 	MimeType string `json:"mimeType"`
@@ -141,6 +143,7 @@ func (t *ToolCallResultImageContent) MarshalJSON() ([]byte, error) {
 }
 
 // ToolCallResultEmbeddedResourceContent is the embedded resource content of the tool call result.
+// TODO: add Annotations field
 type ToolCallResultEmbeddedResourceContent struct {
 	// TODO: 埋め込みリソースの型を定義する
 }
