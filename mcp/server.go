@@ -27,12 +27,21 @@ func WithCustomHandlerFunc[Params, Result any](method string, handler func(ctx c
 	}
 }
 
+// WithTool sets a tool for the server.
+func WithTool(name string, tool tool) ServerOption {
+	return func(s *Server) {
+		s.tools[name] = tool
+	}
+}
+
 // Server is a MCP server.
 type Server struct {
 	name    string
 	version string
 
 	initOpts []jsonrpc2.ConnectionInitializationOption
+
+	tools map[string]tool
 
 	conn *jsonrpc2.Conn
 }
@@ -52,7 +61,10 @@ func NewServer(name, version string, r io.Reader, w io.Writer, opts ...ServerOpt
 	initOpts = append(initOpts,
 		jsonrpc2.WithHandlerFunc("ping", s.Ping),
 		jsonrpc2.WithHandlerFunc("initialize", s.Initialize),
+		jsonrpc2.WithHandlerFunc("tools/list", s.ListTools),
+		jsonrpc2.WithHandlerFunc("tools/call", s.CallTool),
 	)
+
 	initOpts = append(initOpts, s.initOpts...)
 
 	s.conn = jsonrpc2.NewConnection(r, w, initOpts...)

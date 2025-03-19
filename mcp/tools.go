@@ -6,9 +6,76 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 
+	"github.com/Warashi/go-modelcontextprotocol/jsonrpc2"
 	"github.com/Warashi/go-modelcontextprotocol/jsonschema"
 )
+
+// tool is utility type to define tool without type parameters.
+type tool interface {
+	Handle(ctx context.Context, input json.RawMessage) (*ToolCallResultData, error)
+}
+
+// ListToolsRequestParams is the parameters of the list tools request.
+type ListToolsRequestParams struct {
+	Cursor string `json:"cursor"`
+}
+
+// ListToolsResultData is the result of the list tools request.
+type ListToolsResultData struct {
+	Tools      []tool `json:"tools"`
+	NextCursor string `json:"nextCursor"`
+}
+
+// ListTools implements the jsonrpc2.HandlerFunc
+func (s *Server) ListTools(ctx context.Context, request *Request[ListToolsRequestParams]) (*Result[ListToolsResultData], error) {
+	if request.Params.Cursor != "" {
+		return nil, jsonrpc2.NewError(jsonrpc2.CodeInvalidRequest, "cursor is not supported", struct{}{})
+	}
+
+	tools := make([]tool, 0, len(s.tools))
+	for _, t := range slices.Sorted(maps.Keys(s.tools)) {
+		tools = append(tools, s.tools[t])
+	}
+
+	return &Result[ListToolsResultData]{
+		Data: ListToolsResultData{
+			Tools:      tools,
+			NextCursor: "",
+		},
+	}, nil
+}
+
+// ToolCallRequestParams is the parameters of the tool call request.
+type ToolCallRequestParams struct {
+	Name      string          `json:"name"`
+	Arguments json.RawMessage `json:"arguments"`
+}
+
+// ToolCallResultData is the result of the tool call.
+type ToolCallResultData struct {
+	IsError bool                    `json:"isError"`
+	Content []ToolCallResultContent `json:"content"`
+}
+
+// CallTool implements the jsonrpc2.HandlerFunc
+func (s *Server) CallTool(ctx context.Context, request *Request[ToolCallRequestParams]) (*Result[ToolCallResultData], error) {
+	tool, ok := s.tools[request.Params.Name]
+	if !ok {
+		return nil, jsonrpc2.NewError(jsonrpc2.CodeMethodNotFound, "tool not found", struct{}{})
+	}
+
+	result, err := tool.Handle(ctx, request.Params.Arguments)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Result[ToolCallResultData]{
+		Data: *result,
+	}, nil
+}
 
 // Tool is a tool definition in the MCP.
 type Tool[Input any] struct {
@@ -37,12 +104,6 @@ func (f ToolHandlerFunc[Input]) Handle(ctx context.Context, input Input) ([]any,
 
 type ToolCallResultContent interface {
 	isToolCallResultContent()
-}
-
-// ToolCallResult is the result of the tool call.
-type ToolCallResult struct {
-	IsError bool                    `json:"isError"`
-	Content []ToolCallResultContent `json:"content"`
 }
 
 // ToolCallResultTextContent is the text content of the tool call result.
@@ -93,9 +154,9 @@ func (t *ToolCallResultEmbeddedResourceContent) MarshalJSON() ([]byte, error) {
 }
 
 // Handle handles the tool call.
-func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCallResult, error) {
+func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCallResultData, error) {
 	if err := t.Validate(input); err != nil {
-		return &ToolCallResult{
+		return &ToolCallResultData{
 			IsError: true,
 			Content: []ToolCallResultContent{
 				&ToolCallResultTextContent{
@@ -107,7 +168,7 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 
 	var inputInput Input
 	if err := json.Unmarshal(input, &inputInput); err != nil {
-		return &ToolCallResult{
+		return &ToolCallResultData{
 			IsError: true,
 			Content: []ToolCallResultContent{
 				&ToolCallResultTextContent{
@@ -119,7 +180,7 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 
 	result, err := t.Handler.Handle(ctx, inputInput)
 	if err != nil {
-		return &ToolCallResult{
+		return &ToolCallResultData{
 			IsError: true,
 			Content: []ToolCallResultContent{
 				&ToolCallResultTextContent{
@@ -133,7 +194,7 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 	for _, r := range result {
 		content, err := convertToToolCallResultContent(r)
 		if err != nil {
-			return &ToolCallResult{
+			return &ToolCallResultData{
 				IsError: true,
 				Content: []ToolCallResultContent{
 					&ToolCallResultTextContent{
@@ -145,7 +206,7 @@ func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolC
 		contents = append(contents, content)
 	}
 
-	return &ToolCallResult{
+	return &ToolCallResultData{
 		IsError: false,
 		Content: contents,
 	}, nil
