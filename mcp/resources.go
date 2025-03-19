@@ -45,13 +45,13 @@ type ResourceTemplate struct {
 	// URITemplate is the URI template of the resource.
 	URITemplate string `json:"uriTemplate"`
 	// Name is human-readable name of the resource.
-	Name        string `json:"name"`
+	Name string `json:"name"`
 	// Description of what the resource is.
 	Description string `json:"description,omitempty,omitzero"`
 	// MimeType is the MIME type of the resource.
-	MimeType    string `json:"mimeType,omitempty,omitzero"`
+	MimeType string `json:"mimeType,omitempty,omitzero"`
 }
- 
+
 // ReadResourceRequestParams is the parameters of the read resource request.
 type ReadResourceRequestParams struct {
 	URI string `json:"uri"`
@@ -87,7 +87,7 @@ type BlobResourceContents struct {
 	// MimeType is the MIME type of the resource.
 	MimeType string `json:"mimeType,omitempty,omitzero"`
 	// Blob is the binary data of the resource.
-	// This field is base64 encoded when marshaling to JSON. 
+	// This field is base64 encoded when marshaling to JSON.
 	Blob []byte `json:"blob"`
 }
 
@@ -119,5 +119,5 @@ func (s *Server) ListResourceTemplates(ctx context.Context, request *Request[Lis
 
 // ReadResource reads a resource.
 func (s *Server) ReadResource(ctx context.Context, request *Request[ReadResourceRequestParams]) (*Result[ReadResourceResultData], error) {
-	return 	s.resourceReader.ReadResource(ctx, request)
+	return s.resourceReader.ReadResource(ctx, request)
 }

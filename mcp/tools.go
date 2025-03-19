@@ -56,7 +56,7 @@ type ToolCallRequestParams struct {
 
 // ToolCallResultData is the result of the tool call.
 type ToolCallResultData struct {
-	IsError bool                    `json:"isError"`
+	IsError bool        `json:"isError"`
 	Content []isContent `json:"content"`
 }
 

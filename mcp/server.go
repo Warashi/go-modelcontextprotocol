@@ -63,10 +63,10 @@ type Server struct {
 	initOpts []jsonrpc2.ConnectionInitializationOption
 
 	tools map[string]tool
-	
-	resources []Resource
+
+	resources         []Resource
 	resourceTemplates []ResourceTemplate
-	resourceReader ResourceReader
+	resourceReader    ResourceReader
 
 	conn *jsonrpc2.Conn
 }
