@@ -56,7 +56,7 @@ type ToolCallRequestParams struct {
 // ToolCallResultData is the result of the tool call.
 type ToolCallResultData struct {
 	IsError bool        `json:"isError"`
-	Content []isContent `json:"content"`
+	Content []IsContent `json:"content"`
 }
 
 // CallTool implements the jsonrpc2.HandlerFunc
@@ -106,7 +106,7 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 	if err := t.Validate(input); err != nil {
 		return &ToolCallResultData{
 			IsError: true,
-			Content: []isContent{
+			Content: []IsContent{
 				&TextContent{
 					Text: err.Error(),
 				},
@@ -118,7 +118,7 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 	if err := json.Unmarshal(input, &inputInput); err != nil {
 		return &ToolCallResultData{
 			IsError: true,
-			Content: []isContent{
+			Content: []IsContent{
 				&TextContent{
 					Text: err.Error(),
 				},
@@ -130,7 +130,7 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 	if err != nil {
 		return &ToolCallResultData{
 			IsError: true,
-			Content: []isContent{
+			Content: []IsContent{
 				&TextContent{
 					Text: err.Error(),
 				},
@@ -138,13 +138,13 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 		}, nil
 	}
 
-	contents := make([]isContent, 0, len(result))
+	contents := make([]IsContent, 0, len(result))
 	for _, r := range result {
 		content, err := convertToContent(r)
 		if err != nil {
 			return &ToolCallResultData{
 				IsError: true,
-				Content: []isContent{
+				Content: []IsContent{
 					&TextContent{
 						Text: err.Error(),
 					},
@@ -166,7 +166,7 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 // if the result implements encoding.TextMarshaler, calls MarshalText and returns the result as the ToolCallResultTextContent.
 // if the result implements fmt.Stringer, it returns the result as the ToolCallResultTextContent.
 // otherwise, it calls json.Marshal and returns the result as the ToolCallResultTextContent.
-func convertToContent(v any) (isContent, error) {
+func convertToContent(v any) (IsContent, error) {
 	switch v := v.(type) {
 	case string:
 		return &TextContent{

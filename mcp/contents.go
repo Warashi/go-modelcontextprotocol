@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 )
 
-// isContent is an interface for the content of the tool call result.
-type isContent interface {
+// IsContent is an interface for the content of the tool call result.
+type IsContent interface {
 	isContent()
 }
 

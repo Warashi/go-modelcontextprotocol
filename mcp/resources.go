@@ -59,11 +59,11 @@ type ReadResourceRequestParams struct {
 
 // ReadResourceResultData is the result of the read resource request.
 type ReadResourceResultData struct {
-	Contents []isResourceContents `json:"contents"`
+	Contents []IsResourceContents `json:"contents"`
 }
 
-// isResourceContents is an interface for the content of the read resource result.
-type isResourceContents interface {
+// IsResourceContents is an interface for the content of the read resource result.
+type IsResourceContents interface {
 	isResourceContents()
 }
 
