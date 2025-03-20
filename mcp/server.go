@@ -28,9 +28,9 @@ func WithCustomHandlerFunc[Params, Result any](method string, handler func(ctx c
 }
 
 // WithTool sets a tool for the server.
-func WithTool[Input any](name string, tool Tool[Input]) ServerOption {
+func WithTool[Input any](tool Tool[Input]) ServerOption {
 	return func(s *Server) {
-		s.tools[name] = tool
+		s.tools[tool.Name] = tool
 	}
 }
 
