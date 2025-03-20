@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 
 	"github.com/Warashi/go-modelcontextprotocol/jsonrpc2"
@@ -99,21 +100,34 @@ func NewTool[Input any](name, description string, inputSchema jsonschema.Object,
 }
 
 // NewToolFunc creates a new tool with a handler function.
-func NewToolFunc[Input any](name, description string, inputSchema jsonschema.Object, handler func(ctx context.Context, input Input) ([]any, error)) Tool[Input] {
+func NewToolFunc[Input any](name, description string, inputSchema jsonschema.Object, handler func(ctx context.Context, input Input) (any, error)) Tool[Input] {
 	return NewTool(name, description, inputSchema, ToolHandlerFunc[Input](handler))
 }
 
 // ToolHandler is the handler of the tool.
+// If Handle *ToolCallResultData, it returns the result as is.
+// If Handle returns a slice, it converts each element to the Content type.
+// Otherwise, it returns the result as the ToolCallResultData with single Content.
 type ToolHandler[Input any] interface {
-	Handle(ctx context.Context, input Input) ([]any, error)
+	Handle(ctx context.Context, input Input) (any, error)
 }
 
 // ToolHandlerFunc is a function that implements ToolHandler.
-type ToolHandlerFunc[Input any] func(ctx context.Context, input Input) ([]any, error)
+type ToolHandlerFunc[Input any] func(ctx context.Context, input Input) (any, error)
 
 // Handle implements ToolHandler.
-func (f ToolHandlerFunc[Input]) Handle(ctx context.Context, input Input) ([]any, error) {
+func (f ToolHandlerFunc[Input]) Handle(ctx context.Context, input Input) (any, error) {
 	return f(ctx, input)
+}
+
+// Validate validates the input.
+func (t Tool[Input]) Validate(v json.RawMessage) error {
+	var input any
+	if err := json.Unmarshal(v, &input); err != nil {
+		return err
+	}
+
+	return t.InputSchema.Validate(input)
 }
 
 // Handle handles the tool call.
@@ -153,9 +167,44 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 		}, nil
 	}
 
-	contents := make([]IsContent, 0, len(result))
-	for _, r := range result {
-		content, err := convertToContent(r)
+	return convert(result), nil
+}
+
+// convert converts the result to the ToolCallResultData.
+// if the result is already a ToolCallResultData, it returns the result as is.
+// if the result is a slice, it converts each element.
+// otherwise, it returns the result as the ToolCallResultData with single content.
+func convert(v any) *ToolCallResultData {
+	// Check if the result is already a ToolCallResultData
+	if result, ok := v.(*ToolCallResultData); ok {
+		return result
+	}
+
+	// Use reflection to handle different types of results
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Slice:
+		contents := make([]IsContent, rv.Len())
+		for i := range rv.Len() {
+			content, err := convertToContent(rv.Index(i).Interface())
+			if err != nil {
+				return &ToolCallResultData{
+					IsError: true,
+					Content: []IsContent{
+						&TextContent{
+							Text: err.Error(),
+						},
+					},
+				}
+			}
+			contents[i] = content
+		}
+		return &ToolCallResultData{
+			IsError: false,
+			Content: contents,
+		}
+	default:
+		content, err := convertToContent(v)
 		if err != nil {
 			return &ToolCallResultData{
 				IsError: true,
@@ -164,15 +213,13 @@ func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCa
 						Text: err.Error(),
 					},
 				},
-			}, nil
+			}
 		}
-		contents = append(contents, content)
+		return &ToolCallResultData{
+			IsError: false,
+			Content: []IsContent{content},
+		}
 	}
-
-	return &ToolCallResultData{
-		IsError: false,
-		Content: contents,
-	}, nil
 }
 
 // convertToContent converts the result to the ToolCallResultContent.
@@ -214,14 +261,4 @@ func convertToContent(v any) (IsContent, error) {
 			Text: string(b),
 		}, nil
 	}
-}
-
-// Validate validates the input.
-func (t Tool[Input]) Validate(v json.RawMessage) error {
-	var input any
-	if err := json.Unmarshal(v, &input); err != nil {
-		return err
-	}
-
-	return t.InputSchema.Validate(input)
 }
