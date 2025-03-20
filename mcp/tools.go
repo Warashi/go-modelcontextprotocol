@@ -88,6 +88,21 @@ type Tool[Input any] struct {
 	Handler ToolHandler[Input] `json:"-"`
 }
 
+// NewTool creates a new tool.
+func NewTool[Input any](name, description string, inputSchema jsonschema.Object, handler ToolHandler[Input]) Tool[Input] {
+	return Tool[Input]{
+		Name:        name,
+		Description: description,
+		InputSchema: inputSchema,
+		Handler:     handler,
+	}
+}
+
+// NewToolFunc creates a new tool with a handler function.
+func NewToolFunc[Input any](name, description string, inputSchema jsonschema.Object, handler func(ctx context.Context, input Input) ([]any, error)) Tool[Input] {
+	return NewTool(name, description, inputSchema, ToolHandlerFunc[Input](handler))
+}
+
 // ToolHandler is the handler of the tool.
 type ToolHandler[Input any] interface {
 	Handle(ctx context.Context, input Input) ([]any, error)
