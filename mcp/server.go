@@ -76,6 +76,7 @@ func NewServer(name, version string, r io.Reader, w io.Writer, opts ...ServerOpt
 	s := &Server{
 		name:    name,
 		version: version,
+		tools:   make(map[string]tool),
 	}
 
 	for _, opt := range opts {
