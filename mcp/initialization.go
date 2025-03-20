@@ -93,7 +93,7 @@ func (s *Server) Initialize(ctx context.Context, request *Request[Initialization
 		result.Data.Capabilities.Tools = &ToolsCapabilities{}
 	}
 
-	if (len(s.resources) > 0  || len(s.resourceTemplates) > 0) && s.resourceReader != nil {
+	if (len(s.resources) > 0 || len(s.resourceTemplates) > 0) && s.resourceReader != nil {
 		// we have resources and a resource reader
 		result.Data.Capabilities.Resources = &ResourcesCapabilities{}
 	}

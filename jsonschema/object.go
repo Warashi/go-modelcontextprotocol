@@ -20,7 +20,7 @@ func (o Object) MarshalJSON() ([]byte, error) {
 	}
 
 	obj := map[string]any{
-		"type": "object",
+		"type":                 "object",
 		"additionalProperties": false, // we set this to false for simplicity
 	}
 
