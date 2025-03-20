@@ -20,7 +20,7 @@ type TextContent struct {
 func (TextContent) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
-func (t *TextContent) MarshalJSON() ([]byte, error) {
+func (t TextContent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type": "text",
 		"text": t.Text,
@@ -38,7 +38,7 @@ type ImageContent struct {
 func (ImageContent) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
-func (t *ImageContent) MarshalJSON() ([]byte, error) {
+func (t ImageContent) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type":     "image",
 		"data":     base64.StdEncoding.EncodeToString(t.Data),
@@ -49,14 +49,14 @@ func (t *ImageContent) MarshalJSON() ([]byte, error) {
 // EmbeddedResource is the embedded resource content of the tool call result.
 // TODO: add Annotations field
 type EmbeddedResource struct {
-	Resource Resource `json:"resource"`
+	Resource IsResourceContents `json:"resource"`
 }
 
 // isContent implements isContent.
 func (EmbeddedResource) isContent() {}
 
 // MarshalJSON implements json.Marshaler.
-func (t *EmbeddedResource) MarshalJSON() ([]byte, error) {
+func (t EmbeddedResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]any{
 		"type":     "resource",
 		"resource": t.Resource,
