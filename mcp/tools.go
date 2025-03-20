@@ -78,7 +78,7 @@ func (s *Server) CallTool(ctx context.Context, request *Request[ToolCallRequestP
 }
 
 // Tool is a tool definition in the MCP.
-type Tool[Input any] struct {
+type Tool[Input, Output any] struct {
 	// Name is the name of the tool.
 	Name string `json:"name"`
 	// Description is the description of the tool.
@@ -86,12 +86,12 @@ type Tool[Input any] struct {
 	// InputSchema is the schema of the tool's input.
 	InputSchema jsonschema.Object `json:"inputSchema"`
 	// Handler is the handler of the tool.
-	Handler ToolHandler[Input] `json:"-"`
+	Handler ToolHandler[Input, Output] `json:"-"`
 }
 
 // NewTool creates a new tool.
-func NewTool[Input any](name, description string, inputSchema jsonschema.Object, handler ToolHandler[Input]) Tool[Input] {
-	return Tool[Input]{
+func NewTool[Input, Output any](name, description string, inputSchema jsonschema.Object, handler ToolHandler[Input, Output]) Tool[Input, Output] {
+	return Tool[Input, Output]{
 		Name:        name,
 		Description: description,
 		InputSchema: inputSchema,
@@ -100,28 +100,28 @@ func NewTool[Input any](name, description string, inputSchema jsonschema.Object,
 }
 
 // NewToolFunc creates a new tool with a handler function.
-func NewToolFunc[Input any](name, description string, inputSchema jsonschema.Object, handler func(ctx context.Context, input Input) (any, error)) Tool[Input] {
-	return NewTool(name, description, inputSchema, ToolHandlerFunc[Input](handler))
+func NewToolFunc[Input, Output any](name, description string, inputSchema jsonschema.Object, handler func(ctx context.Context, input Input) (Output, error)) Tool[Input, Output] {
+	return NewTool(name, description, inputSchema, ToolHandlerFunc[Input, Output](handler))
 }
 
 // ToolHandler is the handler of the tool.
 // If Handle *ToolCallResultData, it returns the result as is.
 // If Handle returns a slice, it converts each element to the Content type.
 // Otherwise, it returns the result as the ToolCallResultData with single Content.
-type ToolHandler[Input any] interface {
-	Handle(ctx context.Context, input Input) (any, error)
+type ToolHandler[Input, Output any] interface {
+	Handle(ctx context.Context, input Input) (Output, error)
 }
 
 // ToolHandlerFunc is a function that implements ToolHandler.
-type ToolHandlerFunc[Input any] func(ctx context.Context, input Input) (any, error)
+type ToolHandlerFunc[Input, Output any] func(ctx context.Context, input Input) (Output, error)
 
 // Handle implements ToolHandler.
-func (f ToolHandlerFunc[Input]) Handle(ctx context.Context, input Input) (any, error) {
+func (f ToolHandlerFunc[Input, Output]) Handle(ctx context.Context, input Input) (Output, error) {
 	return f(ctx, input)
 }
 
 // Validate validates the input.
-func (t Tool[Input]) Validate(v json.RawMessage) error {
+func (t Tool[Input, Output]) Validate(v json.RawMessage) error {
 	var input any
 	if err := json.Unmarshal(v, &input); err != nil {
 		return err
@@ -131,7 +131,7 @@ func (t Tool[Input]) Validate(v json.RawMessage) error {
 }
 
 // Handle handles the tool call.
-func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCallResultData, error) {
+func (t Tool[Input, Output]) Handle(ctx context.Context, input json.RawMessage) (*ToolCallResultData, error) {
 	if err := t.Validate(input); err != nil {
 		return &ToolCallResultData{
 			IsError: true,
