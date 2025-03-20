@@ -102,7 +102,7 @@ func (f ToolHandlerFunc[Input]) Handle(ctx context.Context, input Input) ([]any,
 }
 
 // Handle handles the tool call.
-func (t *Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCallResultData, error) {
+func (t Tool[Input]) Handle(ctx context.Context, input json.RawMessage) (*ToolCallResultData, error) {
 	if err := t.Validate(input); err != nil {
 		return &ToolCallResultData{
 			IsError: true,
@@ -202,7 +202,7 @@ func convertToContent(v any) (isContent, error) {
 }
 
 // Validate validates the input.
-func (t *Tool[Input]) Validate(v json.RawMessage) error {
+func (t Tool[Input]) Validate(v json.RawMessage) error {
 	var input any
 	if err := json.Unmarshal(v, &input); err != nil {
 		return err
