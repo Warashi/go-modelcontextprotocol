@@ -234,11 +234,7 @@ func convertToContent(v any) (IsContent, error) {
 		return &TextContent{
 			Text: v,
 		}, nil
-	case *TextContent:
-		return v, nil
-	case *ImageContent:
-		return v, nil
-	case *EmbeddedResource:
+	case IsContent:
 		return v, nil
 	case encoding.TextMarshaler:
 		text, err := v.MarshalText()
