@@ -425,7 +425,7 @@ func (c *Conn) serve(ctx context.Context) error {
 func (c *Conn) handleMessage(ctx context.Context) error {
 	var msg json.RawMessage
 	if err := c.dec.Decode(&msg); err != nil {
-		return err
+		return errors.Join(err, c.Close())
 	}
 
 	switch t, err := getMessageType(msg); t {
