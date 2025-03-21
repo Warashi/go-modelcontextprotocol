@@ -1,27 +1,25 @@
-package jsonschema_test
+package jsonschema
 
 import (
 	"testing"
-
-	"github.com/Warashi/go-modelcontextprotocol/jsonschema"
 )
 
 func TestString_Validate(t *testing.T) {
 	tests := []struct {
 		name      string
-		schema    jsonschema.String
+		schema    String
 		value     any
 		expectErr bool
 	}{
-		{"valid string", jsonschema.String{MinLength: 3, MaxLength: 5}, "test", false},
-		{"too short", jsonschema.String{MinLength: 3, MaxLength: 5}, "te", true},
-		{"too long", jsonschema.String{MinLength: 3, MaxLength: 5}, "testing", true},
-		{"not a string", jsonschema.String{MinLength: 3, MaxLength: 5}, 123, true},
+		{"valid string", String{MinLength: 3, MaxLength: 5}, "test", false},
+		{"too short", String{MinLength: 3, MaxLength: 5}, "te", true},
+		{"too long", String{MinLength: 3, MaxLength: 5}, "testing", true},
+		{"not a string", String{MinLength: 3, MaxLength: 5}, 123, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.schema.Validate(tt.value)
+			err := tt.schema.validate(tt.value)
 			if (err != nil) != tt.expectErr {
 				t.Errorf("expected error: %v, got: %v", tt.expectErr, err)
 			}
@@ -32,13 +30,13 @@ func TestString_Validate(t *testing.T) {
 func TestString_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		schema   jsonschema.String
+		schema   String
 		expected string
 	}{
-		{"min and max length", jsonschema.String{MinLength: 3, MaxLength: 5}, `{"maxLength":5,"minLength":3,"type":"string"}`},
-		{"only min length", jsonschema.String{MinLength: 3}, `{"minLength":3,"type":"string"}`},
-		{"only max length", jsonschema.String{MaxLength: 5}, `{"maxLength":5,"type":"string"}`},
-		{"no constraints", jsonschema.String{}, `{"type":"string"}`},
+		{"min and max length", String{MinLength: 3, MaxLength: 5}, `{"maxLength":5,"minLength":3,"type":"string"}`},
+		{"only min length", String{MinLength: 3}, `{"minLength":3,"type":"string"}`},
+		{"only max length", String{MaxLength: 5}, `{"maxLength":5,"type":"string"}`},
+		{"no constraints", String{}, `{"type":"string"}`},
 	}
 
 	for _, tt := range tests {

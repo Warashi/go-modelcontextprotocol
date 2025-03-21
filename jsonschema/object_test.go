@@ -1,23 +1,21 @@
-package jsonschema_test
+package jsonschema
 
 import (
 	"testing"
-
-	"github.com/Warashi/go-modelcontextprotocol/jsonschema"
 )
 
 func TestObject_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name    string
-		object  jsonschema.Object
+		object  Object
 		want    string
 		wantErr bool
 	}{
 		{
 			name: "valid object",
-			object: jsonschema.Object{
-				Properties: map[string]jsonschema.Schema{
-					"prop1": jsonschema.String{},
+			object: Object{
+				Properties: map[string]Schema{
+					"prop1": String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -26,8 +24,8 @@ func TestObject_MarshalJSON(t *testing.T) {
 		},
 		{
 			name: "missing required property",
-			object: jsonschema.Object{
-				Properties: map[string]jsonschema.Schema{},
+			object: Object{
+				Properties: map[string]Schema{},
 				Required:   []string{"prop1"},
 			},
 			want:    "",
@@ -52,15 +50,15 @@ func TestObject_MarshalJSON(t *testing.T) {
 func TestObject_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		object  jsonschema.Object
+		object  Object
 		value   any
 		wantErr bool
 	}{
 		{
 			name: "valid object",
-			object: jsonschema.Object{
-				Properties: map[string]jsonschema.Schema{
-					"prop1": jsonschema.String{},
+			object: Object{
+				Properties: map[string]Schema{
+					"prop1": String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -71,9 +69,9 @@ func TestObject_Validate(t *testing.T) {
 		},
 		{
 			name: "missing required property",
-			object: jsonschema.Object{
-				Properties: map[string]jsonschema.Schema{
-					"prop1": jsonschema.String{},
+			object: Object{
+				Properties: map[string]Schema{
+					"prop1": String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -82,9 +80,9 @@ func TestObject_Validate(t *testing.T) {
 		},
 		{
 			name: "unexpected property",
-			object: jsonschema.Object{
-				Properties: map[string]jsonschema.Schema{
-					"prop1": jsonschema.String{},
+			object: Object{
+				Properties: map[string]Schema{
+					"prop1": String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -96,9 +94,9 @@ func TestObject_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid property value",
-			object: jsonschema.Object{
-				Properties: map[string]jsonschema.Schema{
-					"prop1": jsonschema.String{},
+			object: Object{
+				Properties: map[string]Schema{
+					"prop1": String{},
 				},
 				Required: []string{"prop1"},
 			},
@@ -111,7 +109,7 @@ func TestObject_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.object.Validate(tt.value); (err != nil) != tt.wantErr {
+			if err := tt.object.validate(tt.value); (err != nil) != tt.wantErr {
 				t.Errorf("Object.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

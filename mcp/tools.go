@@ -31,7 +31,7 @@ type ListToolsResultData struct {
 
 // ListTools implements the jsonrpc2.HandlerFunc
 func (s *Server) ListTools(ctx context.Context, request *Request[ListToolsRequestParams]) (*Result[ListToolsResultData], error) {
-	if request != nil && request.Params.Cursor != "" {
+	if request.Params.Cursor != "" {
 		return nil, jsonrpc2.NewError(jsonrpc2.CodeInvalidRequest, "cursor is not supported", struct{}{})
 	}
 
@@ -122,12 +122,7 @@ func (f ToolHandlerFunc[Input, Output]) Handle(ctx context.Context, input Input)
 
 // Validate validates the input.
 func (t Tool[Input, Output]) Validate(v json.RawMessage) error {
-	var input any
-	if err := json.Unmarshal(v, &input); err != nil {
-		return err
-	}
-
-	return t.InputSchema.Validate(input)
+	return t.InputSchema.Validate(v)
 }
 
 // Handle handles the tool call.

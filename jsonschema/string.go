@@ -12,7 +12,17 @@ type String struct {
 }
 
 // Validate validates the string against the JSON schema.
-func (s String) Validate(v any) error {
+func (s String) Validate(v json.RawMessage) error {
+	var m any
+	if err := json.Unmarshal(v, &m); err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return s.validate(m)
+}
+
+// validate validates the string against the JSON schema.
+func (s String) validate(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("value is not a string")

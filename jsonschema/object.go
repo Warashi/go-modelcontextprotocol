@@ -40,7 +40,17 @@ func (o Object) MarshalJSON() ([]byte, error) {
 }
 
 // Validate validates the object against the JSON schema.
-func (o Object) Validate(v any) error {
+func (o Object) Validate(v json.RawMessage) error {
+	var m any
+	if err := json.Unmarshal(v, &m); err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return o.validate(m)
+}
+
+// validate validates the object against the JSON schema.
+func (o Object) validate(v any) error {
 	m, ok := v.(map[string]any)
 	if !ok {
 		return fmt.Errorf("object is not a map")
@@ -59,7 +69,7 @@ func (o Object) Validate(v any) error {
 	}
 
 	for k, v := range o.Properties {
-		if err := v.Validate(m[k]); err != nil {
+		if err := v.validate(m[k]); err != nil {
 			return fmt.Errorf("property %s: %w", k, err)
 		}
 	}

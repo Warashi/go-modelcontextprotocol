@@ -8,5 +8,6 @@ type Schema interface {
 }
 
 type SchemaValidator interface {
-	Validate(v any) error
+	Validate(v json.RawMessage) error
+	validate(v any) error
 }
