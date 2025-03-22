@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-func TestNumber_Validate(t *testing.T) {
-	ptr := func(v float64) *float64 {
-		return &v
-	}
+func ptr[T any](v T) *T {
+	return &v
+}
 
+func TestNumber_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
 		schema  Number
@@ -94,10 +94,6 @@ func TestNumber_Validate(t *testing.T) {
 }
 
 func TestInteger_Validate(t *testing.T) {
-	ptr := func(v int64) *int64 {
-		return &v
-	}
-
 	tests := []struct {
 		name    string
 		schema  Integer
@@ -182,6 +178,182 @@ func TestInteger_Validate(t *testing.T) {
 			err := tt.schema.Validate(tt.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Integer.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNumber_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  Number
+		want    string
+		wantErr bool
+	}{
+		{
+			name:   "empty schema",
+			schema: Number{},
+			want:   `{"type":"number"}`,
+		},
+		{
+			name: "with description",
+			schema: Number{
+				Description: "test description",
+			},
+			want: `{"type":"number","description":"test description"}`,
+		},
+		{
+			name: "with minimum and maximum",
+			schema: Number{
+				Minimum: ptr(10.0),
+				Maximum: ptr(100.0),
+			},
+			want: `{"type":"number","minimum":10,"maximum":100}`,
+		},
+		{
+			name: "with exclusive minimum and maximum",
+			schema: Number{
+				ExclusiveMinimum: ptr(10.0),
+				ExclusiveMaximum: ptr(100.0),
+			},
+			want: `{"type":"number","exclusiveMinimum":10,"exclusiveMaximum":100}`,
+		},
+		{
+			name: "with all fields",
+			schema: Number{
+				Description:      "test description",
+				Minimum:          ptr(10.0),
+				Maximum:          ptr(100.0),
+				ExclusiveMinimum: ptr(20.0),
+				ExclusiveMaximum: ptr(90.0),
+			},
+			want: `{"type":"number","description":"test description","minimum":10,"maximum":100,"exclusiveMinimum":20,"exclusiveMaximum":90}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.schema.MarshalJSON()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Number.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+
+			// Compare JSON strings after normalizing them
+			var gotMap, wantMap map[string]interface{}
+			if err := json.Unmarshal(got, &gotMap); err != nil {
+				t.Errorf("failed to unmarshal got: %v", err)
+				return
+			}
+			if err := json.Unmarshal([]byte(tt.want), &wantMap); err != nil {
+				t.Errorf("failed to unmarshal want: %v", err)
+				return
+			}
+
+			gotJSON, err := json.Marshal(gotMap)
+			if err != nil {
+				t.Errorf("failed to marshal got: %v", err)
+				return
+			}
+			wantJSON, err := json.Marshal(wantMap)
+			if err != nil {
+				t.Errorf("failed to marshal want: %v", err)
+				return
+			}
+
+			if string(gotJSON) != string(wantJSON) {
+				t.Errorf("Number.MarshalJSON() = %v, want %v", string(gotJSON), string(wantJSON))
+			}
+		})
+	}
+}
+
+func TestInteger_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  Integer
+		want    string
+		wantErr bool
+	}{
+		{
+			name:   "empty schema",
+			schema: Integer{},
+			want:   `{"type":"integer"}`,
+		},
+		{
+			name: "with description",
+			schema: Integer{
+				Description: "test description",
+			},
+			want: `{"type":"integer","description":"test description"}`,
+		},
+		{
+			name: "with minimum and maximum",
+			schema: Integer{
+				Minimum: ptr(int64(10)),
+				Maximum: ptr(int64(100)),
+			},
+			want: `{"type":"integer","minimum":10,"maximum":100}`,
+		},
+		{
+			name: "with exclusive minimum and maximum",
+			schema: Integer{
+				ExclusiveMinimum: ptr(int64(10)),
+				ExclusiveMaximum: ptr(int64(100)),
+			},
+			want: `{"type":"integer","exclusiveMinimum":10,"exclusiveMaximum":100}`,
+		},
+		{
+			name: "with all fields",
+			schema: Integer{
+				Description:      "test description",
+				Minimum:          ptr(int64(10)),
+				Maximum:          ptr(int64(100)),
+				ExclusiveMinimum: ptr(int64(20)),
+				ExclusiveMaximum: ptr(int64(90)),
+			},
+			want: `{"type":"integer","description":"test description","minimum":10,"maximum":100,"exclusiveMinimum":20,"exclusiveMaximum":90}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.schema.MarshalJSON()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Integer.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+
+			// Compare JSON strings after normalizing them
+			var gotMap, wantMap map[string]interface{}
+			if err := json.Unmarshal(got, &gotMap); err != nil {
+				t.Errorf("failed to unmarshal got: %v", err)
+				return
+			}
+			if err := json.Unmarshal([]byte(tt.want), &wantMap); err != nil {
+				t.Errorf("failed to unmarshal want: %v", err)
+				return
+			}
+
+			gotJSON, err := json.Marshal(gotMap)
+			if err != nil {
+				t.Errorf("failed to marshal got: %v", err)
+				return
+			}
+			wantJSON, err := json.Marshal(wantMap)
+			if err != nil {
+				t.Errorf("failed to marshal want: %v", err)
+				return
+			}
+
+			if string(gotJSON) != string(wantJSON) {
+				t.Errorf("Integer.MarshalJSON() = %v, want %v", string(gotJSON), string(wantJSON))
 			}
 		})
 	}
