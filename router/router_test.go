@@ -34,6 +34,11 @@ func TestMux_Handle(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "valid route with URL-encoded query params",
+			uri:     "http://example.com/search?q=hello%20world&type=web%2Fpage",
+			wantErr: false,
+		},
+		{
 			name:        "invalid URI - missing scheme",
 			uri:         "example.com/users",
 			wantErr:     true,
@@ -56,6 +61,12 @@ func TestMux_Handle(t *testing.T) {
 			uri:         "http://example.com/users/{param}/posts/{param}",
 			wantErr:     true,
 			errContains: "param name duplicated",
+		},
+		{
+			name:        "invalid route with malformed query string",
+			uri:         "http://example.com/search?q=%ZZ",
+			wantErr:     true,
+			errContains: "invalid URI",
 		},
 	}
 
@@ -115,6 +126,20 @@ func TestMux_Execute(t *testing.T) {
 			wantErr:     false,
 		},
 		{
+			name:        "query param match with URL-encoded values",
+			setupRoutes: []string{"http://example.com/search?q=hello%20world&type=web%2Fpage"},
+			execURI:     "http://example.com/search?q=hello%20world&type=web%2Fpage",
+			want:        "ok",
+			wantErr:     false,
+		},
+		{
+			name:        "query param match with mixed encoding",
+			setupRoutes: []string{"http://example.com/search?q=hello world&type=web%2Fpage"},
+			execURI:     "http://example.com/search?q=hello%20world&type=web%2Fpage",
+			want:        "ok",
+			wantErr:     false,
+		},
+		{
 			name:        "no match - different path",
 			setupRoutes: []string{"http://example.com/users"},
 			execURI:     "http://example.com/posts",
@@ -151,6 +176,13 @@ func TestMux_Execute(t *testing.T) {
 			execURI:     "invalid-uri",
 			wantErr:     true,
 			errContains: "invalid URI",
+		},
+		{
+			name:        "URL-encoded query param extraction",
+			setupRoutes: []string{"http://example.com/search"},
+			execURI:     "http://example.com/search?q=hello%20world&type=web%2Fpage",
+			want:        "ok",
+			wantErr:     false,
 		},
 	}
 
@@ -235,6 +267,16 @@ func TestMux_ParamExtraction(t *testing.T) {
 			wantQuery: map[string]string{
 				"role":  "admin",
 				"extra": "value",
+			},
+		},
+		{
+			name:       "URL-encoded query param extraction",
+			routeURI:   "http://example.com/search",
+			requestURI: "http://example.com/search?q=hello%20world&type=web%2Fpage",
+			wantParams: map[string]string{},
+			wantQuery: map[string]string{
+				"q":    "hello world",
+				"type": "web/page",
 			},
 		},
 	}

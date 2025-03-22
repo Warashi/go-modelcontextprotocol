@@ -605,7 +605,7 @@ func parseQueryForRegistration(q string) (map[string]string, error) {
 	}
 	values, err := url.ParseQuery(q)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid URI: %w", err)
 	}
 	result := make(map[string]string)
 	for k, arr := range values {
