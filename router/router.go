@@ -10,12 +10,12 @@ import (
 )
 
 // ----------------------------------------
-// エラー定義
+// Error Definitions
 // ----------------------------------------
 var ErrNotFound = errors.New("route not found")
 
 // ----------------------------------------
-// Request 型
+// Request Type
 // ----------------------------------------
 type Request struct {
 	Query  map[string]string
@@ -23,46 +23,46 @@ type Request struct {
 }
 
 // ----------------------------------------
-// Handler[T] インターフェース
+// Handler[T] Interface
 // ----------------------------------------
 type Handler[T any] interface {
 	Handle(ctx context.Context, req *Request) (T, error)
 }
 
-// HandlerFunc[T] は関数を Handler[T] として扱うための型
+// HandlerFunc[T] is a type to treat functions as Handler[T]
 type HandlerFunc[T any] func(ctx context.Context, req *Request) (T, error)
 
-// インターフェース実装
+// Interface implementation
 func (f HandlerFunc[T]) Handle(ctx context.Context, req *Request) (T, error) {
 	return f(ctx, req)
 }
 
 // ----------------------------------------
-// 内部構造：登録ルートを表す struct
+// Internal Structure: struct representing registered routes
 // ----------------------------------------
 type route[T any] struct {
-	scheme string // 小文字で保持（固定値のみ）
-	// host が動的かどうか
+	scheme string // stored in lowercase (fixed values only)
+	// whether host is dynamic
 	hostIsParam   bool
-	hostParamName string // hostIsParam == true の場合に使用
-	host          string // hostIsParam == false の場合に使用（小文字化）
-	// パス情報
+	hostParamName string // used when hostIsParam == true
+	host          string // used when hostIsParam == false (lowercase)
+	// path information
 	pathSegments []pathSegment
-	// クエリ情報（固定キー・固定値のみ）
+	// query information (fixed keys and fixed values only)
 	query map[string]string
-	// ハンドラ
+	// handler
 	handler Handler[T]
 }
 
-// pathSegment は静的 or 動的セグメントを区別する
+// pathSegment distinguishes between static and dynamic segments
 type pathSegment struct {
 	isParam   bool
-	paramName string // isParam = true の場合に使用
-	literal   string // isParam = false の場合に使用
+	paramName string // used when isParam = true
+	literal   string // used when isParam = false
 }
 
 // ----------------------------------------
-// Mux[T] 本体
+// Mux[T] Main Body
 // ----------------------------------------
 type Mux[T any] struct {
 	routes          []route[T]
@@ -70,14 +70,14 @@ type Mux[T any] struct {
 }
 
 // ----------------------------------------
-// Mux[T] のコンストラクタ（必要に応じて）
+// Mux[T] Constructor (as needed)
 // ----------------------------------------
 func NewMux[T any]() *Mux[T] {
 	return &Mux[T]{}
 }
 
 // ----------------------------------------
-// NotFoundHandler の設定
+// NotFoundHandler Configuration
 // ----------------------------------------
 func (m *Mux[T]) SetNotFoundHandler(h Handler[T]) {
 	m.notFoundHandler = h
@@ -88,47 +88,47 @@ func (m *Mux[T]) SetNotFoundHandlerFunc(f func(ctx context.Context, req *Request
 }
 
 // ----------------------------------------
-// ハンドラ登録（Handle, HandleFunc）
+// Handler Registration (Handle, HandleFunc)
 // ----------------------------------------
 func (m *Mux[T]) HandleFunc(uri string, f func(context.Context, *Request) (T, error)) error {
 	return m.Handle(uri, HandlerFunc[T](f))
 }
 
 func (m *Mux[T]) Handle(uri string, h Handler[T]) error {
-	// URI をパース → 内部用の route[T] 構造体に変換
+	// Parse URI → Convert to internal route[T] structure
 	r, err := m.parseRoute(uri, h)
 	if err != nil {
 		return err
 	}
-	// 登録時に重複や衝突をチェック
+	// Check for duplicates and conflicts during registration
 	if err := m.checkConflict(r); err != nil {
 		return err
 	}
-	// 追加
+	// Add
 	m.routes = append(m.routes, r)
 	return nil
 }
 
 // ----------------------------------------
-// ルックアップ（生 URI から Handler を呼び出す例）
-// 実際の利用形態に合わせてメソッド名や署名を変更してください
+// Lookup (Example of calling Handler from raw URI)
+// Please modify method name and signature according to actual usage
 // ----------------------------------------
 func (m *Mux[T]) Lookup(ctx context.Context, rawURI string) (T, error) {
-	// パース
+	// Parse
 	req, parsed, err := m.parseRequest(rawURI)
 	if err != nil {
-		// クエリの重複や空キーなどは parseRequest 時点でエラーになる
-		// → ルートミスマッチと同等扱いで notFoundHandler を呼ぶ
+		// Query duplicates or empty keys will result in errors at parseRequest
+		// → Treat as route mismatch and call notFoundHandler
 		return m.handleNotFound(ctx, req)
 	}
 
-	// 全ルートを走査してマッチ度の高いものを探す
+	// Scan all routes to find the one with highest match score
 	var candidates []matchedRoute[T]
 	for _, rt := range m.routes {
 		params, match := m.matchRoute(rt, parsed)
 		if match {
-			// パラメータを獲得して候補に入れる
-			score := calcStaticScore(rt) // 静的セグメント数をスコアとみなす
+			// Add to candidates with acquired parameters
+			score := calcStaticScore(rt) // Use number of static segments as score
 			candidates = append(candidates, matchedRoute[T]{
 				route:  rt,
 				params: params,
@@ -137,15 +137,15 @@ func (m *Mux[T]) Lookup(ctx context.Context, rawURI string) (T, error) {
 		}
 	}
 	if len(candidates) == 0 {
-		// 見つからないので notFoundHandler or ErrNotFound
+		// Not found, return notFoundHandler or ErrNotFound
 		return m.handleNotFound(ctx, req)
 	}
 
-	// 静的スコア降順にソートし、最もスコアが高いものを選択
-	// 「静的ルートがあればそちらを優先」が担保される
+	// Sort by static score in descending order and select highest score
+	// This ensures "static routes are prioritized"
 	best := pickBestMatch(candidates)
 
-	// Request にパラメータをセット
+	// Set parameters to Request
 	for k, v := range best.params {
 		req.Params[k] = v
 	}
@@ -154,17 +154,17 @@ func (m *Mux[T]) Lookup(ctx context.Context, rawURI string) (T, error) {
 }
 
 // ----------------------------------------
-// 内部で使用するヘルパー
+// Internal Helpers
 // ----------------------------------------
 
-// matchedRoute は Lookup 時にマッチした候補を保持するための構造
+// matchedRoute holds matched candidates during Lookup
 type matchedRoute[T any] struct {
 	route  route[T]
 	params map[string]string
 	score  int
 }
 
-// pickBestMatch は最も score が高いものを返す
+// pickBestMatch returns the one with highest score
 func pickBestMatch[T any](candidates []matchedRoute[T]) matchedRoute[T] {
 	best := candidates[0]
 	for _, c := range candidates[1:] {
@@ -175,14 +175,14 @@ func pickBestMatch[T any](candidates []matchedRoute[T]) matchedRoute[T] {
 	return best
 }
 
-// calcStaticScore は「静的セグメント数 + ホスト固定なら1、スキームは常に固定なので0加算」など適宜
+// calcStaticScore: "static segment count + 1 if host is fixed, scheme is always fixed so +0" etc.
 func calcStaticScore[T any](r route[T]) int {
 	score := 0
-	// ホストが固定なら +1
+	// +1 if host is fixed
 	if !r.hostIsParam {
 		score++
 	}
-	// パスの各セグメントが静的なら +1
+	// +1 for each static path segment
 	for _, seg := range r.pathSegments {
 		if !seg.isParam {
 			score++
@@ -191,7 +191,7 @@ func calcStaticScore[T any](r route[T]) int {
 	return score
 }
 
-// handleNotFound は notFoundHandler があれば呼び出し、なければ ErrNotFound を返す
+// handleNotFound calls notFoundHandler if exists, otherwise returns ErrNotFound
 func (m *Mux[T]) handleNotFound(ctx context.Context, req *Request) (T, error) {
 	var zero T
 	if m.notFoundHandler != nil {
@@ -201,7 +201,7 @@ func (m *Mux[T]) handleNotFound(ctx context.Context, req *Request) (T, error) {
 }
 
 // ----------------------------------------
-// ルート登録時の URI パース
+// URI Parsing for Route Registration
 // ----------------------------------------
 func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 	u, err := url.Parse(uri)
@@ -209,29 +209,29 @@ func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 		return route[T]{}, fmt.Errorf("invalid URI: %w", err)
 	}
 
-	// scheme（小文字化）
+	// scheme (lowercase)
 	if u.Scheme == "" {
 		return route[T]{}, fmt.Errorf("scheme is required")
 	}
 	scheme := strings.ToLower(u.Scheme)
 
-	// host（小文字化）
+	// host (lowercase)
 	if u.Host == "" {
 		return route[T]{}, fmt.Errorf("host is required")
 	}
-	// 「{param}」かどうか判定
+	// Check if it's "{param}"
 	hostIsParam := false
 	hostParamName := ""
 	hostLower := strings.ToLower(u.Host)
 	if strings.HasPrefix(u.Host, "{") && strings.HasSuffix(u.Host, "}") {
-		// 動的ホスト
+		// Dynamic host
 		hostIsParam = true
 		hostParamName = strings.TrimSuffix(strings.TrimPrefix(u.Host, "{"), "}")
 		if !isValidParamName(hostParamName) {
 			return route[T]{}, fmt.Errorf("invalid host param name: %s", hostParamName)
 		}
 	} else {
-		hostLower = strings.ToLower(u.Host) // 固定ホストは小文字で保持
+		hostLower = strings.ToLower(u.Host) // Store fixed host in lowercase
 	}
 
 	// path
@@ -240,13 +240,13 @@ func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 		return route[T]{}, err
 	}
 
-	// クエリ（固定キー値のみ）
+	// query (fixed key-value pairs only)
 	q, err := parseQueryForRegistration(u.RawQuery)
 	if err != nil {
 		return route[T]{}, err
 	}
 
-	// 動的パラメータが含まれる場合に名前の重複チェック
+	// Check for duplicate parameter names if dynamic parameters are included
 	if err := checkParamNameDuplication(hostParamName, pathSegs); err != nil {
 		return route[T]{}, err
 	}
@@ -264,40 +264,40 @@ func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 }
 
 // ----------------------------------------
-// 登録時の重複・衝突チェック
+// Check for Duplicates and Conflicts during Registration
 // ----------------------------------------
 func (m *Mux[T]) checkConflict(newRoute route[T]) error {
 	for _, rt := range m.routes {
-		// 完全に同一の静的ルートが重複していないか（scheme, host固定/param, path, query が同じ形）チェック
-		// もしくは動的ルート同士が同一パターンをカバーしていないか
+		// Check if identical static routes are not duplicated (same scheme, host fixed/param, path, query pattern)
+		// Or if dynamic routes cover the same pattern
 		if isSameCoverage(rt, newRoute) {
-			// すでに同じ (または同一カバレッジ) ルートがある
+			// Already have same (or same coverage) route
 			return fmt.Errorf("conflict route: %v", routeToString(newRoute))
 		}
 	}
 	return nil
 }
 
-// isSameCoverage は 2つのルートが「同じマッチ範囲」をカバーするかどうか
-// 仕様上:
-//   - 静的 vs 静的 が同一なら完全重複
-//   - 動的 vs 動的 が同一箇所にあれば同じパターン
-//   - 静的 vs 動的 は衝突にならない（ただし同一箇所が静的と動的で両方マッチ可能でも登録エラーにはしない）
+// isSameCoverage checks if 2 routes cover "the same match range"
+// Specification:
+//   - static vs static: complete duplicate if identical
+//   - dynamic vs dynamic: same pattern if at same position
+//   - static vs dynamic: no conflict (even if same position can match both static and dynamic, not registration error)
 func isSameCoverage[T any](a, b route[T]) bool {
-	// 1) scheme は小文字化済みなのでそのまま比較
+	// 1) scheme is already lowercase, compare as is
 	if a.scheme != b.scheme {
 		return false
 	}
 
 	// 2) host
 	if a.hostIsParam != b.hostIsParam {
-		// 片方が動的、もう片方が固定 → 同じカバー範囲ではない
+		// One is dynamic, other is fixed → not same coverage
 		return false
 	} else {
 		if a.hostIsParam && b.hostIsParam {
-			// 両方動的なら同じカバレッジ
+			// Both dynamic means same coverage
 		} else {
-			// 両方固定なら値が同じかどうか
+			// Both fixed, check if values match
 			if a.host != b.host {
 				return false
 			}
@@ -311,14 +311,14 @@ func isSameCoverage[T any](a, b route[T]) bool {
 	for i := 0; i < len(a.pathSegments); i++ {
 		sA, sB := a.pathSegments[i], b.pathSegments[i]
 		if sA.isParam != sB.isParam {
-			// 片方が静的、片方が動的ならカバー範囲は異なる
+			// One is static, other is dynamic means different coverage
 			return false
 		} else {
 			if sA.isParam && sB.isParam {
-				// 両方動的なら同じカバレッジ
-				// → パラメータ名が違っていても同じカバー範囲
+				// Both dynamic means same coverage
+				// → Even if parameter names differ, same coverage
 			} else {
-				// 両方静的なら文字列が同じかどうか
+				// Both static, check if strings match
 				if sA.literal != sB.literal {
 					return false
 				}
@@ -327,8 +327,8 @@ func isSameCoverage[T any](a, b route[T]) bool {
 	}
 
 	// 4) query
-	//   - 同じキー・値のペアが完全一致なら同じカバレッジ
-	//   - この場合、「動的クエリ」は仕様で禁止されているので固定値同士の一致チェックのみで十分
+	//   - Same coverage if exact match of key-value pairs
+	//   - In this case, "dynamic query" is prohibited by spec so checking fixed values is sufficient
 	if len(a.query) != len(b.query) {
 		return false
 	}
@@ -341,7 +341,7 @@ func isSameCoverage[T any](a, b route[T]) bool {
 	return true
 }
 
-// routeToString はデバッグ用
+// routeToString is for debugging
 func routeToString[T any](r route[T]) string {
 	var sb strings.Builder
 	sb.WriteString(r.scheme)
@@ -379,17 +379,17 @@ func routeToString[T any](r route[T]) string {
 }
 
 // ----------------------------------------
-// リクエスト用の URI パース
+// URI Parsing for Requests
 // ----------------------------------------
 type parsedURI struct {
 	scheme   string
 	host     string
 	pathSegs []string
 	query    map[string]string
-	rawQuery map[string]string // 実際に受け取った全クエリ（追加キー含む）
+	rawQuery map[string]string // All actual received queries (including additional keys)
 }
 
-// parseRequest は生 URI をパースして Request および内部用構造を返す
+// parseRequest parses raw URI and returns Request and internal structure
 func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 	u, err := url.Parse(rawURI)
 	if err != nil {
@@ -408,24 +408,24 @@ func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 	}
 	host := strings.ToLower(u.Host)
 
-	// path → 正規化（連続スラッシュ/末尾スラッシュなど）
+	// path → normalize (consecutive slashes/trailing slash etc.)
 	pathSegs, err := parsePathForRequest(u.Path)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// クエリをパース → key/value
+	// Parse query → key/value
 	reqQuery, err := parseQueryForRequest(u.RawQuery)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Request 構造体
+	// Request structure
 	req := &Request{
 		Query:  make(map[string]string),
 		Params: make(map[string]string),
 	}
-	// 受け取ったクエリはすべて Request.Query に入れる（マッチの可否は別途判定する）
+	// Put all received queries into Request.Query (match determination is separate)
 	for k, v := range reqQuery {
 		req.Query[k] = v
 	}
@@ -434,8 +434,8 @@ func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 		scheme:   scheme,
 		host:     host,
 		pathSegs: pathSegs,
-		query:    reqQuery, // 同じもの
-		// rawQuery として同じものを持つかどうかはお好み
+		query:    reqQuery, // Same object
+		// Whether to keep same as rawQuery is optional
 		rawQuery: reqQuery,
 	}
 
@@ -443,7 +443,7 @@ func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 }
 
 // ----------------------------------------
-// マッチ判定
+// Match Determination
 // ----------------------------------------
 func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, bool) {
 	// 1) scheme
@@ -455,7 +455,7 @@ func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, 
 
 	// 2) host
 	if rt.hostIsParam {
-		// 動的ホストとしてパラメータに取り込む
+		// Capture as dynamic host parameter
 		params[rt.hostParamName] = parsed.host
 	} else {
 		if rt.host != parsed.host {
@@ -470,10 +470,10 @@ func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, 
 	for i, seg := range rt.pathSegments {
 		got := parsed.pathSegs[i]
 		if seg.isParam {
-			// パラメータをセット
+			// Set parameter
 			params[seg.paramName] = got
 		} else {
-			// 静的セグメントとの一致判定（case-sensitive）
+			// Match against static segment (case-sensitive)
 			if seg.literal != got {
 				return nil, false
 			}
@@ -481,8 +481,8 @@ func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, 
 	}
 
 	// 4) query
-	//   - 登録されているキーについては、完全一致しているか
-	//   - リクエストに余計なキーがあってもよい
+	//   - For registered keys, must match exactly
+	//   - Extra keys in request are allowed
 	for k, v := range rt.query {
 		got, ok := parsed.query[k]
 		if !ok {
@@ -497,29 +497,29 @@ func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, 
 }
 
 // ----------------------------------------
-// path の正規化: 連続スラッシュを1つにまとめ、末尾スラッシュを削除し、""(空) が先頭に出るなら除去
-// 例: //users///profile/ → ["users", "profile"]
-// 登録時にもリクエスト時にも共通で使う
+// Path Normalization: Combine consecutive slashes into one, remove trailing slash, remove "" (empty) from start
+// Example: //users///profile/ → ["users", "profile"]
+// Used both during registration and request handling
 // ----------------------------------------
 func parsePath(p string) ([]pathSegment, error) {
-	// スラッシュを正規化する前に先頭/末尾のスラッシュを一旦除去しやすい形に
+	// Remove leading/trailing slashes first for easier normalization
 	trimmed := strings.TrimRight(p, "/")
-	// 二重スラッシュを1個にまとめるために Split して再構築
+	// Split and rebuild to combine double slashes into one
 	rawSegs := strings.Split(trimmed, "/")
 	var segs []string
 	for _, s := range rawSegs {
 		if s == "" {
-			// 連続するスラッシュの間は無視
+			// Ignore between consecutive slashes
 			continue
 		}
 		segs = append(segs, s)
 	}
 
-	// pathSegment に変換
+	// Convert to pathSegment
 	ps := make([]pathSegment, 0, len(segs))
 	for _, s := range segs {
 		if strings.HasPrefix(s, "{") && strings.HasSuffix(s, "}") {
-			// 動的パラメータ
+			// Dynamic parameter
 			paramName := strings.TrimSuffix(strings.TrimPrefix(s, "{"), "}")
 			if !isValidParamName(paramName) {
 				return nil, fmt.Errorf("invalid path param name: %s", paramName)
@@ -539,8 +539,8 @@ func parsePath(p string) ([]pathSegment, error) {
 }
 
 // ----------------------------------------
-// リクエスト時の path 正規化（こちらは []string で返す）
-// 登録時とほぼ同じ処理なのでまとめるならまとめてもOK
+// Request-time path normalization (returns []string)
+// Almost same process as registration, can be combined if desired
 // ----------------------------------------
 func parsePathForRequest(p string) ([]string, error) {
 	trimmed := strings.TrimRight(p, "/")
@@ -556,11 +556,11 @@ func parsePathForRequest(p string) ([]string, error) {
 }
 
 // ----------------------------------------
-// クエリパラメータのパース（登録用）
-//   - 重複キーがあればエラー
-//   - 空キーはエラー
-//   - "%xx" は標準ライブラリがデコードしてくれる
-//   - "{param}" は禁止（固定値のみ）
+// Query Parameter Parsing (for registration)
+//   - Error if duplicate keys
+//   - Error if empty key
+//   - "%xx" is decoded by standard library
+//   - "{param}" is prohibited (fixed values only)
 //
 // ----------------------------------------
 func parseQueryForRegistration(q string) (map[string]string, error) {
@@ -580,7 +580,7 @@ func parseQueryForRegistration(q string) (map[string]string, error) {
 			return nil, fmt.Errorf("dynamic param in query is not allowed: %s", k)
 		}
 		if len(arr) > 1 {
-			// 同じキーに複数値がある → エラー
+			// Multiple values for same key → Error
 			return nil, fmt.Errorf("duplicate query key: %s", k)
 		}
 		result[k] = arr[0]
@@ -589,9 +589,9 @@ func parseQueryForRegistration(q string) (map[string]string, error) {
 }
 
 // ----------------------------------------
-// リクエスト時のクエリパース
-//   - 重複キーや空キーがあればエラー
-//   - 値が複数あるケースもエラー
+// Request-time Query Parsing
+//   - Error if duplicate keys or empty keys
+//   - Error if multiple values
 //
 // ----------------------------------------
 func parseQueryForRequest(q string) (map[string]string, error) {
@@ -616,8 +616,8 @@ func parseQueryForRequest(q string) (map[string]string, error) {
 }
 
 // ----------------------------------------
-// パラメータ名のバリデーション
-//   - 英数字、ハイフン、アンダースコアのみOK
+// Parameter Name Validation
+//   - Only alphanumeric, hyphen, underscore allowed
 //
 // ----------------------------------------
 var paramNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
@@ -627,8 +627,8 @@ func isValidParamName(name string) bool {
 }
 
 // ----------------------------------------
-// 同一ルート内でパラメータ名が重複していないかチェック
-// ホストが {xxx} の場合も考慮
+// Check for Parameter Name Duplication within Same Route
+// Consider host if it's {xxx}
 // ----------------------------------------
 func checkParamNameDuplication(hostParamName string, pathSegs []pathSegment) error {
 	used := make(map[string]bool)
