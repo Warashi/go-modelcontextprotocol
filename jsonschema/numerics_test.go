@@ -238,35 +238,10 @@ func TestNumber_MarshalJSON(t *testing.T) {
 				t.Errorf("Number.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err != nil {
+			if tt.wantErr {
 				return
 			}
-
-			// Compare JSON strings after normalizing them
-			var gotMap, wantMap map[string]interface{}
-			if err := json.Unmarshal(got, &gotMap); err != nil {
-				t.Errorf("failed to unmarshal got: %v", err)
-				return
-			}
-			if err := json.Unmarshal([]byte(tt.want), &wantMap); err != nil {
-				t.Errorf("failed to unmarshal want: %v", err)
-				return
-			}
-
-			gotJSON, err := json.Marshal(gotMap)
-			if err != nil {
-				t.Errorf("failed to marshal got: %v", err)
-				return
-			}
-			wantJSON, err := json.Marshal(wantMap)
-			if err != nil {
-				t.Errorf("failed to marshal want: %v", err)
-				return
-			}
-
-			if string(gotJSON) != string(wantJSON) {
-				t.Errorf("Number.MarshalJSON() = %v, want %v", string(gotJSON), string(wantJSON))
-			}
+			assertJSONEqual(t, tt.want, string(got))
 		})
 	}
 }
@@ -326,35 +301,10 @@ func TestInteger_MarshalJSON(t *testing.T) {
 				t.Errorf("Integer.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err != nil {
+			if tt.wantErr {
 				return
 			}
-
-			// Compare JSON strings after normalizing them
-			var gotMap, wantMap map[string]interface{}
-			if err := json.Unmarshal(got, &gotMap); err != nil {
-				t.Errorf("failed to unmarshal got: %v", err)
-				return
-			}
-			if err := json.Unmarshal([]byte(tt.want), &wantMap); err != nil {
-				t.Errorf("failed to unmarshal want: %v", err)
-				return
-			}
-
-			gotJSON, err := json.Marshal(gotMap)
-			if err != nil {
-				t.Errorf("failed to marshal got: %v", err)
-				return
-			}
-			wantJSON, err := json.Marshal(wantMap)
-			if err != nil {
-				t.Errorf("failed to marshal want: %v", err)
-				return
-			}
-
-			if string(gotJSON) != string(wantJSON) {
-				t.Errorf("Integer.MarshalJSON() = %v, want %v", string(gotJSON), string(wantJSON))
-			}
+			assertJSONEqual(t, tt.want, string(got))
 		})
 	}
 }

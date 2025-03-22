@@ -83,9 +83,10 @@ func TestMap_MarshalJSON(t *testing.T) {
 				t.Errorf("Map.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if string(got) != tt.want {
-				t.Errorf("Map.MarshalJSON() = %v, want %v", string(got), tt.want)
+			if tt.wantErr {
+				return
 			}
+			assertJSONEqual(t, tt.want, string(got))
 		})
 	}
 }

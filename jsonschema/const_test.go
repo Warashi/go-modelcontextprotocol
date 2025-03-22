@@ -169,9 +169,10 @@ func TestConst_MarshalJSON(t *testing.T) {
 				t.Errorf("Const.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if string(got) != tt.want {
-				t.Errorf("Const.MarshalJSON() = %v, want %v", string(got), tt.want)
+			if tt.wantErr {
+				return
 			}
+			assertJSONEqual(t, tt.want, string(got))
 		})
 	}
 }
