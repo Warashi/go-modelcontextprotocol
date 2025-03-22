@@ -63,6 +63,10 @@ func (o Object) validate(v any) error {
 	}
 
 	for k, v := range o.Properties {
+		if _, ok := m[k]; !ok {
+			continue
+		}
+
 		if err := v.validate(m[k]); err != nil {
 			return fmt.Errorf("property %s: %w", k, err)
 		}
