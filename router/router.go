@@ -110,10 +110,10 @@ func (m *Mux[T]) Handle(uri string, h Handler[T]) error {
 }
 
 // ----------------------------------------
-// Lookup (Example of calling Handler from raw URI)
-// Please modify method name and signature according to actual usage
+// Execute
+// This is the main method for handling requests
 // ----------------------------------------
-func (m *Mux[T]) Lookup(ctx context.Context, rawURI string) (T, error) {
+func (m *Mux[T]) Execute(ctx context.Context, rawURI string) (T, error) {
 	// Parse
 	req, parsed, err := m.parseRequest(rawURI)
 	if err != nil {
