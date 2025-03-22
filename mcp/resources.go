@@ -1,6 +1,10 @@
 package mcp
 
-import "context"
+import (
+	"context"
+
+	"github.com/Warashi/go-modelcontextprotocol/router"
+)
 
 // ListResourcesRequestParams is the parameters of the list resources request.
 type ListResourcesRequestParams struct {
@@ -97,6 +101,43 @@ func (BlobResourceContents) isResourceContents() {}
 // ResourceHandler is the handler of the resource methods.
 type ResourceReader interface {
 	ReadResource(ctx context.Context, request *Request[ReadResourceRequestParams]) (*Result[ReadResourceResultData], error)
+}
+
+// ResourceReaderMux is a multiplexer for resource readers.
+type ResourceReaderMux struct {
+	mux *router.Mux[*Result[ReadResourceResultData]]
+}
+
+// NewResourceReaderMux creates a new resource reader multiplexer.
+func NewResourceReaderMux() *ResourceReaderMux {
+	return &ResourceReaderMux{
+		mux: router.NewMux[*Result[ReadResourceResultData]](),
+	}
+}
+
+// ReadResource reads a resource.
+func (m *ResourceReaderMux) ReadResource(ctx context.Context, request *Request[ReadResourceRequestParams]) (*Result[ReadResourceResultData], error) {
+	return m.mux.Execute(ctx, request.Params.URI)
+}
+
+// Handle registers a new route with a handler.
+func (m *ResourceReaderMux) Handle(uri string, h router.Handler[*Result[ReadResourceResultData]]) error {
+	return m.mux.Handle(uri, h)
+}
+
+// HandleFunc registers a new route with a handler function.
+func (m *ResourceReaderMux) HandleFunc(uri string, f func(context.Context, *router.Request) (*Result[ReadResourceResultData], error)) error {
+	return m.mux.HandleFunc(uri, f)
+}
+
+// SetNotFoundHandler sets the handler to be called when no matching route is found.
+func (m *ResourceReaderMux) SetNotFoundHandler(h router.Handler[*Result[ReadResourceResultData]]) {
+	m.mux.SetNotFoundHandler(h)
+}
+
+// SetNotFoundHandlerFunc sets the handler to be called when no matching route is found.
+func (m *ResourceReaderMux) SetNotFoundHandlerFunc(f func(context.Context, *router.Request) (*Result[ReadResourceResultData], error)) {
+	m.mux.SetNotFoundHandlerFunc(f)
 }
 
 // ListResources lists resources.
