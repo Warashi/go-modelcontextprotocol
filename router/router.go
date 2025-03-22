@@ -108,12 +108,13 @@ func (m *Mux[T]) Handle(uri string, h Handler[T]) error {
 // Execute processes an incoming request URI and calls the appropriate handler.
 // It returns ErrNotFound if no matching route is found and no notFoundHandler is set.
 func (m *Mux[T]) Execute(ctx context.Context, rawURI string) (T, error) {
+	var zero T
+
 	// Parse
 	req, parsed, err := m.parseRequest(rawURI)
 	if err != nil {
-		// Query duplicates or empty keys will result in errors at parseRequest
-		// → Treat as route mismatch and call notFoundHandler
-		return m.handleNotFound(ctx, req)
+		// Return the parse error directly instead of treating it as a route mismatch
+		return zero, err
 	}
 
 	// Scan all routes to find the one with highest match score
@@ -193,37 +194,53 @@ func (m *Mux[T]) handleNotFound(ctx context.Context, req *Request) (T, error) {
 
 // parseRoute converts a URI string into a route structure.
 func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
-	u, err := url.Parse(uri)
+	// Extract scheme and host manually first
+	parts := strings.SplitN(uri, "://", 2)
+	if len(parts) != 2 {
+		return route[T]{}, fmt.Errorf("scheme is required")
+	}
+	scheme := strings.ToLower(parts[0])
+
+	// Split host and path+query
+	remainder := parts[1]
+	slashIndex := strings.Index(remainder, "/")
+	var host, pathAndQuery string
+	if slashIndex == -1 {
+		host = remainder
+		pathAndQuery = "/"
+	} else {
+		host = remainder[:slashIndex]
+		pathAndQuery = remainder[slashIndex:]
+	}
+
+	if host == "" {
+		return route[T]{}, fmt.Errorf("host is required")
+	}
+
+	// Check if host contains parameter
+	hostIsParam := false
+	hostParamName := ""
+	if strings.Contains(host, "{") && strings.Contains(host, "}") {
+		// Extract parameter name
+		start := strings.Index(host, "{")
+		end := strings.Index(host, "}")
+		if start == -1 || end == -1 || end <= start {
+			return route[T]{}, fmt.Errorf("invalid host parameter format")
+		}
+		hostParamName = host[start+1 : end]
+		if !isValidParamName(hostParamName) {
+			return route[T]{}, fmt.Errorf("invalid host param name: %s", hostParamName)
+		}
+		hostIsParam = true
+	}
+
+	// Parse path and query
+	u, err := url.Parse(scheme + "://example.com" + pathAndQuery)
 	if err != nil {
 		return route[T]{}, fmt.Errorf("invalid URI: %w", err)
 	}
 
-	// scheme (lowercase)
-	if u.Scheme == "" {
-		return route[T]{}, fmt.Errorf("scheme is required")
-	}
-	scheme := strings.ToLower(u.Scheme)
-
-	// host (lowercase)
-	if u.Host == "" {
-		return route[T]{}, fmt.Errorf("host is required")
-	}
-	// Check if it's "{param}"
-	hostIsParam := false
-	hostParamName := ""
-	hostLower := strings.ToLower(u.Host)
-	if strings.HasPrefix(u.Host, "{") && strings.HasSuffix(u.Host, "}") {
-		// Dynamic host
-		hostIsParam = true
-		hostParamName = strings.TrimSuffix(strings.TrimPrefix(u.Host, "{"), "}")
-		if !isValidParamName(hostParamName) {
-			return route[T]{}, fmt.Errorf("invalid host param name: %s", hostParamName)
-		}
-	} else {
-		hostLower = strings.ToLower(u.Host) // Store fixed host in lowercase
-	}
-
-	// path
+	// path → normalize (consecutive slashes/trailing slash etc.)
 	pathSegs, err := parsePath(u.Path)
 	if err != nil {
 		return route[T]{}, err
@@ -244,7 +261,7 @@ func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 		scheme:        scheme,
 		hostIsParam:   hostIsParam,
 		hostParamName: hostParamName,
-		host:          hostLower,
+		host:          strings.ToLower(host),
 		pathSegments:  pathSegs,
 		query:         q,
 		handler:       h,
@@ -376,22 +393,45 @@ type parsedURI struct {
 
 // parseRequest parses a raw URI string into a Request object and internal parsedURI structure.
 func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
-	u, err := url.Parse(rawURI)
-	if err != nil {
-		return nil, nil, err
+	// Extract scheme and host manually first
+	parts := strings.SplitN(rawURI, "://", 2)
+	if len(parts) != 2 {
+		return nil, nil, fmt.Errorf("invalid URI: scheme is required")
+	}
+	scheme := strings.ToLower(parts[0])
+
+	// Split host and path+query
+	remainder := parts[1]
+	slashIndex := strings.Index(remainder, "/")
+	var host, pathAndQuery string
+	if slashIndex == -1 {
+		host = remainder
+		pathAndQuery = ""
+	} else {
+		host = remainder[:slashIndex]
+		pathAndQuery = remainder[slashIndex:]
 	}
 
-	// scheme
-	if u.Scheme == "" {
-		return nil, nil, fmt.Errorf("scheme is missing in request")
+	if host == "" {
+		return nil, nil, fmt.Errorf("invalid URI: host is required")
 	}
-	scheme := strings.ToLower(u.Scheme)
+	host = strings.ToLower(host)
 
-	// host
-	if u.Host == "" {
-		return nil, nil, fmt.Errorf("host is missing in request")
+	// Parse path and query
+	var u *url.URL
+	var err error
+	if pathAndQuery == "" {
+		u = &url.URL{
+			Scheme: scheme,
+			Host:   host,
+			Path:   "/",
+		}
+	} else {
+		u, err = url.Parse(scheme + "://" + host + pathAndQuery)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid URI: %w", err)
+		}
 	}
-	host := strings.ToLower(u.Host)
 
 	// path → normalize (consecutive slashes/trailing slash etc.)
 	pathSegs, err := parsePathForRequest(u.Path)
@@ -420,7 +460,6 @@ func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 		host:     host,
 		pathSegs: pathSegs,
 		query:    reqQuery, // Same object
-		// Whether to keep same as rawQuery is optional
 		rawQuery: reqQuery,
 	}
 
@@ -438,8 +477,31 @@ func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, 
 
 	// 2) host
 	if rt.hostIsParam {
-		// Capture as dynamic host parameter
-		params[rt.hostParamName] = parsed.host
+		// For host parameters, we need to check if the host follows the same pattern
+		routeHost := rt.host       // e.g. "{subdomain}.example.com"
+		requestHost := parsed.host // e.g. "test.example.com"
+
+		// Extract the parameter part and the static parts
+		start := strings.Index(routeHost, "{")
+		end := strings.Index(routeHost, "}")
+		if start != -1 && end != -1 && end > start {
+			prefix := routeHost[:start]
+			suffix := routeHost[end+1:]
+
+			// Check if the request host matches the pattern
+			if !strings.HasPrefix(requestHost, prefix) || !strings.HasSuffix(requestHost, suffix) {
+				return nil, false
+			}
+
+			// Extract the parameter value
+			paramValue := requestHost[len(prefix) : len(requestHost)-len(suffix)]
+			if paramValue == "" {
+				return nil, false
+			}
+			params[rt.hostParamName] = paramValue
+		} else {
+			return nil, false
+		}
 	} else {
 		if rt.host != parsed.host {
 			return nil, false
@@ -599,19 +661,16 @@ func isValidParamName(name string) bool {
 // checkParamNameDuplication verifies that parameter names are not duplicated
 // within a route's host and path segments.
 func checkParamNameDuplication(hostParamName string, pathSegs []pathSegment) error {
-	used := make(map[string]bool)
+	used := make(map[string]struct{})
 	if hostParamName != "" {
-		if used[hostParamName] {
-			return fmt.Errorf("param name duplicated in host: %s", hostParamName)
-		}
-		used[hostParamName] = true
+		used[hostParamName] = struct{}{}
 	}
 	for _, seg := range pathSegs {
 		if seg.isParam {
-			if used[seg.paramName] {
+			if _, exists := used[seg.paramName]; exists {
 				return fmt.Errorf("param name duplicated: %s", seg.paramName)
 			}
-			used[seg.paramName] = true
+			used[seg.paramName] = struct{}{}
 		}
 	}
 	return nil
