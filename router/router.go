@@ -1,3 +1,5 @@
+// Package router provides a flexible URI routing system with support for dynamic parameters
+// and pattern matching.
 package router
 
 import (
@@ -9,91 +11,81 @@ import (
 	"strings"
 )
 
-// ----------------------------------------
-// Error Definitions
-// ----------------------------------------
+// ErrNotFound is returned when no matching route is found.
 var ErrNotFound = errors.New("route not found")
 
-// ----------------------------------------
-// Request Type
-// ----------------------------------------
+// Request represents an incoming request with query parameters and path parameters.
 type Request struct {
-	Query  map[string]string
+	// Query contains the query parameters from the URL.
+	Query map[string]string
+	// Params contains the dynamic parameters extracted from the URL path and host.
 	Params map[string]string
 }
 
-// ----------------------------------------
-// Handler[T] Interface
-// ----------------------------------------
+// Handler is an interface that processes requests and returns results of type T.
 type Handler[T any] interface {
 	Handle(ctx context.Context, req *Request) (T, error)
 }
 
-// HandlerFunc[T] is a type to treat functions as Handler[T]
+// HandlerFunc is a function type that implements Handler[T].
 type HandlerFunc[T any] func(ctx context.Context, req *Request) (T, error)
 
-// Interface implementation
+// Handle implements the Handler interface for HandlerFunc.
 func (f HandlerFunc[T]) Handle(ctx context.Context, req *Request) (T, error) {
 	return f(ctx, req)
 }
 
-// ----------------------------------------
-// Internal Structure: struct representing registered routes
-// ----------------------------------------
+// route represents a registered route with its pattern and handler.
 type route[T any] struct {
 	scheme string // stored in lowercase (fixed values only)
-	// whether host is dynamic
+	// host parameters
 	hostIsParam   bool
 	hostParamName string // used when hostIsParam == true
 	host          string // used when hostIsParam == false (lowercase)
-	// path information
+	// path segments
 	pathSegments []pathSegment
-	// query information (fixed keys and fixed values only)
+	// query parameters (fixed keys and fixed values only)
 	query map[string]string
-	// handler
+	// handler for processing requests
 	handler Handler[T]
 }
 
-// pathSegment distinguishes between static and dynamic segments
+// pathSegment represents a single segment of a URL path, which can be either
+// static (literal) or dynamic (parameter).
 type pathSegment struct {
 	isParam   bool
 	paramName string // used when isParam = true
 	literal   string // used when isParam = false
 }
 
-// ----------------------------------------
-// Mux[T] Main Body
-// ----------------------------------------
+// Mux is a request multiplexer that matches incoming requests against registered
+// patterns and calls the corresponding handler.
 type Mux[T any] struct {
 	routes          []route[T]
 	notFoundHandler Handler[T]
 }
 
-// ----------------------------------------
-// Mux[T] Constructor (as needed)
-// ----------------------------------------
+// NewMux creates a new Mux instance.
 func NewMux[T any]() *Mux[T] {
 	return &Mux[T]{}
 }
 
-// ----------------------------------------
-// NotFoundHandler Configuration
-// ----------------------------------------
+// SetNotFoundHandler sets the handler to be called when no matching route is found.
 func (m *Mux[T]) SetNotFoundHandler(h Handler[T]) {
 	m.notFoundHandler = h
 }
 
+// SetNotFoundHandlerFunc sets a function to be called when no matching route is found.
 func (m *Mux[T]) SetNotFoundHandlerFunc(f func(ctx context.Context, req *Request) (T, error)) {
 	m.notFoundHandler = HandlerFunc[T](f)
 }
 
-// ----------------------------------------
-// Handler Registration (Handle, HandleFunc)
-// ----------------------------------------
+// HandleFunc registers a new route with a handler function.
 func (m *Mux[T]) HandleFunc(uri string, f func(context.Context, *Request) (T, error)) error {
 	return m.Handle(uri, HandlerFunc[T](f))
 }
 
+// Handle registers a new route with a handler.
 func (m *Mux[T]) Handle(uri string, h Handler[T]) error {
 	// Parse URI → Convert to internal route[T] structure
 	r, err := m.parseRoute(uri, h)
@@ -109,10 +101,8 @@ func (m *Mux[T]) Handle(uri string, h Handler[T]) error {
 	return nil
 }
 
-// ----------------------------------------
-// Execute
-// This is the main method for handling requests
-// ----------------------------------------
+// Execute processes an incoming request URI and calls the appropriate handler.
+// It returns ErrNotFound if no matching route is found and no notFoundHandler is set.
 func (m *Mux[T]) Execute(ctx context.Context, rawURI string) (T, error) {
 	// Parse
 	req, parsed, err := m.parseRequest(rawURI)
@@ -153,18 +143,14 @@ func (m *Mux[T]) Execute(ctx context.Context, rawURI string) (T, error) {
 	return best.route.handler.Handle(ctx, req)
 }
 
-// ----------------------------------------
-// Internal Helpers
-// ----------------------------------------
-
-// matchedRoute holds matched candidates during Lookup
+// matchedRoute holds a matched route along with its extracted parameters and match score.
 type matchedRoute[T any] struct {
 	route  route[T]
 	params map[string]string
 	score  int
 }
 
-// pickBestMatch returns the one with highest score
+// pickBestMatch selects the route with the highest score from the candidates.
 func pickBestMatch[T any](candidates []matchedRoute[T]) matchedRoute[T] {
 	best := candidates[0]
 	for _, c := range candidates[1:] {
@@ -175,7 +161,8 @@ func pickBestMatch[T any](candidates []matchedRoute[T]) matchedRoute[T] {
 	return best
 }
 
-// calcStaticScore: "static segment count + 1 if host is fixed, scheme is always fixed so +0" etc.
+// calcStaticScore calculates a score for a route based on its static segments.
+// Static segments and fixed hosts contribute to a higher score.
 func calcStaticScore[T any](r route[T]) int {
 	score := 0
 	// +1 if host is fixed
@@ -191,7 +178,7 @@ func calcStaticScore[T any](r route[T]) int {
 	return score
 }
 
-// handleNotFound calls notFoundHandler if exists, otherwise returns ErrNotFound
+// handleNotFound processes requests when no matching route is found.
 func (m *Mux[T]) handleNotFound(ctx context.Context, req *Request) (T, error) {
 	var zero T
 	if m.notFoundHandler != nil {
@@ -200,9 +187,7 @@ func (m *Mux[T]) handleNotFound(ctx context.Context, req *Request) (T, error) {
 	return zero, ErrNotFound
 }
 
-// ----------------------------------------
-// URI Parsing for Route Registration
-// ----------------------------------------
+// parseRoute converts a URI string into a route structure.
 func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 	u, err := url.Parse(uri)
 	if err != nil {
@@ -263,9 +248,7 @@ func (m *Mux[T]) parseRoute(uri string, h Handler[T]) (route[T], error) {
 	return r, nil
 }
 
-// ----------------------------------------
-// Check for Duplicates and Conflicts during Registration
-// ----------------------------------------
+// checkConflict verifies that a new route doesn't conflict with existing routes.
 func (m *Mux[T]) checkConflict(newRoute route[T]) error {
 	for _, rt := range m.routes {
 		// Check if identical static routes are not duplicated (same scheme, host fixed/param, path, query pattern)
@@ -278,11 +261,11 @@ func (m *Mux[T]) checkConflict(newRoute route[T]) error {
 	return nil
 }
 
-// isSameCoverage checks if 2 routes cover "the same match range"
-// Specification:
-//   - static vs static: complete duplicate if identical
-//   - dynamic vs dynamic: same pattern if at same position
-//   - static vs dynamic: no conflict (even if same position can match both static and dynamic, not registration error)
+// isSameCoverage determines if two routes would match the same requests.
+// Routes are considered to have the same coverage if:
+// - They have identical static segments
+// - They have dynamic segments in the same positions
+// - They have the same query parameters
 func isSameCoverage[T any](a, b route[T]) bool {
 	// 1) scheme is already lowercase, compare as is
 	if a.scheme != b.scheme {
@@ -341,7 +324,7 @@ func isSameCoverage[T any](a, b route[T]) bool {
 	return true
 }
 
-// routeToString is for debugging
+// routeToString converts a route to its string representation for debugging.
 func routeToString[T any](r route[T]) string {
 	var sb strings.Builder
 	sb.WriteString(r.scheme)
@@ -378,9 +361,7 @@ func routeToString[T any](r route[T]) string {
 	return sb.String()
 }
 
-// ----------------------------------------
-// URI Parsing for Requests
-// ----------------------------------------
+// parsedURI represents a parsed URI with its components separated.
 type parsedURI struct {
 	scheme   string
 	host     string
@@ -389,7 +370,7 @@ type parsedURI struct {
 	rawQuery map[string]string // All actual received queries (including additional keys)
 }
 
-// parseRequest parses raw URI and returns Request and internal structure
+// parseRequest parses a raw URI string into a Request object and internal parsedURI structure.
 func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 	u, err := url.Parse(rawURI)
 	if err != nil {
@@ -442,9 +423,7 @@ func (m *Mux[T]) parseRequest(rawURI string) (*Request, *parsedURI, error) {
 	return req, p, nil
 }
 
-// ----------------------------------------
-// Match Determination
-// ----------------------------------------
+// matchRoute checks if a route matches a parsed URI and returns extracted parameters.
 func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, bool) {
 	// 1) scheme
 	if rt.scheme != parsed.scheme {
@@ -496,11 +475,8 @@ func (m *Mux[T]) matchRoute(rt route[T], parsed *parsedURI) (map[string]string, 
 	return params, true
 }
 
-// ----------------------------------------
-// Path Normalization: Combine consecutive slashes into one, remove trailing slash, remove "" (empty) from start
-// Example: //users///profile/ → ["users", "profile"]
-// Used both during registration and request handling
-// ----------------------------------------
+// parsePath normalizes and parses a path string into path segments.
+// It removes consecutive slashes, trailing slashes, and empty segments.
 func parsePath(p string) ([]pathSegment, error) {
 	// Remove leading/trailing slashes first for easier normalization
 	trimmed := strings.TrimRight(p, "/")
@@ -538,10 +514,7 @@ func parsePath(p string) ([]pathSegment, error) {
 	return ps, nil
 }
 
-// ----------------------------------------
-// Request-time path normalization (returns []string)
-// Almost same process as registration, can be combined if desired
-// ----------------------------------------
+// parsePathForRequest normalizes and parses a path string for incoming requests.
 func parsePathForRequest(p string) ([]string, error) {
 	trimmed := strings.TrimRight(p, "/")
 	rawSegs := strings.Split(trimmed, "/")
@@ -555,14 +528,11 @@ func parsePathForRequest(p string) ([]string, error) {
 	return segs, nil
 }
 
-// ----------------------------------------
-// Query Parameter Parsing (for registration)
-//   - Error if duplicate keys
-//   - Error if empty key
-//   - "%xx" is decoded by standard library
-//   - "{param}" is prohibited (fixed values only)
-//
-// ----------------------------------------
+// parseQueryForRegistration parses query parameters during route registration.
+// It enforces:
+// - No duplicate keys
+// - No empty keys
+// - No dynamic parameters
 func parseQueryForRegistration(q string) (map[string]string, error) {
 	if q == "" {
 		return map[string]string{}, nil
@@ -588,12 +558,10 @@ func parseQueryForRegistration(q string) (map[string]string, error) {
 	return result, nil
 }
 
-// ----------------------------------------
-// Request-time Query Parsing
-//   - Error if duplicate keys or empty keys
-//   - Error if multiple values
-//
-// ----------------------------------------
+// parseQueryForRequest parses query parameters from incoming requests.
+// It enforces:
+// - No duplicate keys
+// - No empty keys
 func parseQueryForRequest(q string) (map[string]string, error) {
 	if q == "" {
 		return map[string]string{}, nil
@@ -615,21 +583,17 @@ func parseQueryForRequest(q string) (map[string]string, error) {
 	return result, nil
 }
 
-// ----------------------------------------
-// Parameter Name Validation
-//   - Only alphanumeric, hyphen, underscore allowed
-//
-// ----------------------------------------
+// paramNamePattern defines the allowed characters in parameter names.
 var paramNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
+// isValidParamName checks if a parameter name contains only allowed characters
+// (alphanumeric, hyphen, underscore) and is not empty.
 func isValidParamName(name string) bool {
 	return name != "" && paramNamePattern.MatchString(name)
 }
 
-// ----------------------------------------
-// Check for Parameter Name Duplication within Same Route
-// Consider host if it's {xxx}
-// ----------------------------------------
+// checkParamNameDuplication verifies that parameter names are not duplicated
+// within a route's host and path segments.
 func checkParamNameDuplication(hostParamName string, pathSegs []pathSegment) error {
 	used := make(map[string]bool)
 	if hostParamName != "" {
