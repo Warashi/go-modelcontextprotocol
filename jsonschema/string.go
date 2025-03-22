@@ -7,8 +7,9 @@ import (
 
 // String is a JSON schema string.
 type String struct {
-	MinLength int
-	MaxLength int
+	Description string `json:"description,omitempty"`
+	MinLength   int    `json:"minLength,omitempty"`
+	MaxLength   int    `json:"maxLength,omitempty"`
 }
 
 // Validate validates the string against the JSON schema.
@@ -41,17 +42,13 @@ func (s String) validate(v any) error {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (s String) MarshalJSON() ([]byte, error) {
-	obj := map[string]any{
-		"type": "string",
-	}
+	type stringSchema String
 
-	if s.MinLength > 0 {
-		obj["minLength"] = s.MinLength
-	}
-
-	if s.MaxLength > 0 {
-		obj["maxLength"] = s.MaxLength
-	}
-
-	return json.Marshal(obj)
+	return json.Marshal(struct {
+		Type string `json:"type"`
+		stringSchema
+	}{
+		Type:         "string",
+		stringSchema: stringSchema(s),
+	})
 }

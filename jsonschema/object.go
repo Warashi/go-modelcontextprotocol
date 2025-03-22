@@ -7,8 +7,9 @@ import (
 
 // Object is a JSON schema object.
 type Object struct {
-	Properties map[string]Schema
-	Required   []string
+	Description string            `json:"description,omitempty"`
+	Properties  map[string]Schema `json:"properties"`
+	Required    []string          `json:"required,omitempty,omitzero"`
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -19,24 +20,17 @@ func (o Object) MarshalJSON() ([]byte, error) {
 		}
 	}
 
-	obj := map[string]any{
-		"type":                 "object",
-		"additionalProperties": false, // we set this to false for simplicity
-	}
+	type objectSchema Object
 
-	if len(o.Required) > 0 {
-		obj["required"] = o.Required
-	}
-
-	if len(o.Properties) > 0 {
-		properties := make(map[string]any)
-		for k, v := range o.Properties {
-			properties[k] = v
-		}
-		obj["properties"] = properties
-	}
-
-	return json.Marshal(obj)
+	return json.Marshal(struct {
+		Type                 string `json:"type"`
+		AdditionalProperties bool   `json:"additionalProperties"`
+		objectSchema
+	}{
+		Type:                 "object",
+		AdditionalProperties: false, // we set this to false for simplicity
+		objectSchema:         objectSchema(o),
+	})
 }
 
 // Validate validates the object against the JSON schema.

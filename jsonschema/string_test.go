@@ -45,9 +45,7 @@ func TestString_MarshalJSON(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if string(data) != tt.expected {
-				t.Errorf("expected: %s, got: %s", tt.expected, string(data))
-			}
+			assertJSONEqual(t, tt.expected, string(data))
 		})
 	}
 }

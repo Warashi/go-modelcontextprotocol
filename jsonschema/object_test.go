@@ -28,7 +28,6 @@ func TestObject_MarshalJSON(t *testing.T) {
 				Properties: map[string]Schema{},
 				Required:   []string{"prop1"},
 			},
-			want:    "",
 			wantErr: true,
 		},
 	}
@@ -40,9 +39,10 @@ func TestObject_MarshalJSON(t *testing.T) {
 				t.Errorf("Object.MarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got := string(got); got != tt.want {
-				t.Errorf("Object.MarshalJSON() = %v, want %v", got, tt.want)
+			if tt.wantErr {
+				return
 			}
+			assertJSONEqual(t, tt.want, string(got))
 		})
 	}
 }
