@@ -86,6 +86,10 @@ func (m *Mux[T]) HandleFunc(uri string, f func(context.Context, *Request) (T, er
 }
 
 // Handle registers a new route with a handler.
+// uri is a URI string that will be matched against registered routes.
+// uri can contains dynamic parameters like {param} in path and host.
+// uri can contains query parameters like ?key=value.
+// for example, "http://example.com/users/{id}" is a valid uri.
 func (m *Mux[T]) Handle(uri string, h Handler[T]) error {
 	// Parse URI → Convert to internal route[T] structure
 	r, err := m.parseRoute(uri, h)
