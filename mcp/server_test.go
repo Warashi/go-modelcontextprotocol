@@ -83,7 +83,7 @@ func TestServerOptions(t *testing.T) {
 
 	t.Run("WithTool", func(t *testing.T) {
 		r, w := io.Pipe()
-		tool := NewToolFunc[string, string](
+		tool := NewToolFunc(
 			"test_tool",
 			"Test tool description",
 			jsonschema.Object{},
