@@ -49,7 +49,7 @@ func TestID_String_Panic(t *testing.T) {
 	}()
 
 	id := ID{value: true} // Invalid type
-	id.String()
+	_ = id.String()
 }
 
 func TestID_UnmarshalJSON(t *testing.T) {
