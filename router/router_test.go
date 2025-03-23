@@ -425,3 +425,115 @@ func mapsEqual(m1, m2 map[string]string) bool {
 	}
 	return true
 }
+
+func TestMux_NotFoundHandler(t *testing.T) {
+	t.Run("SetNotFoundHandler", func(t *testing.T) {
+		m := NewMux[string]()
+		handler := HandlerFunc[string](func(ctx context.Context, req *Request) (string, error) {
+			return "custom not found", nil
+		})
+		m.SetNotFoundHandler(handler)
+
+		result, err := m.Execute(context.Background(), "http://example.com/nonexistent")
+		if err != nil {
+			t.Errorf("Execute() error = %v", err)
+		}
+		if result != "custom not found" {
+			t.Errorf("Execute() = %v, want %v", result, "custom not found")
+		}
+	})
+
+	t.Run("SetNotFoundHandlerFunc", func(t *testing.T) {
+		m := NewMux[string]()
+		m.SetNotFoundHandlerFunc(func(ctx context.Context, req *Request) (string, error) {
+			return "custom not found func", nil
+		})
+
+		result, err := m.Execute(context.Background(), "http://example.com/nonexistent")
+		if err != nil {
+			t.Errorf("Execute() error = %v", err)
+		}
+		if result != "custom not found func" {
+			t.Errorf("Execute() = %v, want %v", result, "custom not found func")
+		}
+	})
+
+	t.Run("Default not found handler", func(t *testing.T) {
+		m := NewMux[string]()
+		_, err := m.Execute(context.Background(), "http://example.com/nonexistent")
+		if err != ErrNotFound {
+			t.Errorf("Execute() error = %v, want %v", err, ErrNotFound)
+		}
+	})
+}
+
+func TestMux_HandleFunc(t *testing.T) {
+	m := NewMux[string]()
+	err := m.HandleFunc("http://example.com/test", func(ctx context.Context, req *Request) (string, error) {
+		return "handlefunc", nil
+	})
+	if err != nil {
+		t.Errorf("HandleFunc() error = %v", err)
+	}
+
+	result, err := m.Execute(context.Background(), "http://example.com/test")
+	if err != nil {
+		t.Errorf("Execute() error = %v", err)
+	}
+	if result != "handlefunc" {
+		t.Errorf("Execute() = %v, want %v", result, "handlefunc")
+	}
+}
+
+func TestMux_RouteScoring(t *testing.T) {
+	t.Run("Static route prioritized over dynamic", func(t *testing.T) {
+		m := NewMux[string]()
+		m.HandleFunc("http://example.com/users/{id}", func(ctx context.Context, req *Request) (string, error) {
+			return "dynamic", nil
+		})
+		m.HandleFunc("http://example.com/users/profile", func(ctx context.Context, req *Request) (string, error) {
+			return "static", nil
+		})
+
+		result, err := m.Execute(context.Background(), "http://example.com/users/profile")
+		if err != nil {
+			t.Errorf("Execute() error = %v", err)
+		}
+		if result != "static" {
+			t.Errorf("Execute() = %v, want %v", result, "static")
+		}
+	})
+
+	t.Run("Static host prioritized over dynamic", func(t *testing.T) {
+		m := NewMux[string]()
+		m.HandleFunc("http://{subdomain}.example.com/test", func(ctx context.Context, req *Request) (string, error) {
+			return "dynamic", nil
+		})
+		m.HandleFunc("http://api.example.com/test", func(ctx context.Context, req *Request) (string, error) {
+			return "static", nil
+		})
+
+		result, err := m.Execute(context.Background(), "http://api.example.com/test")
+		if err != nil {
+			t.Errorf("Execute() error = %v", err)
+		}
+		if result != "static" {
+			t.Errorf("Execute() = %v, want %v", result, "static")
+		}
+	})
+
+	t.Run("Multiple dynamic segments", func(t *testing.T) {
+		m := NewMux[string]()
+		m.HandleFunc("http://{subdomain}.example.com/users/{id}/posts/{postId}", func(ctx context.Context, req *Request) (string, error) {
+			return "ok", nil
+		})
+
+		result, err := m.Execute(context.Background(), "http://blog.example.com/users/123/posts/456")
+		if err != nil {
+			t.Errorf("Execute() error = %v", err)
+		}
+		if result != "ok" {
+			t.Errorf("Execute() = %v, want %v", result, "ok")
+		}
+	})
+}
