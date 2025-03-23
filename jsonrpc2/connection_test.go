@@ -41,6 +41,17 @@ func TestID_String(t *testing.T) {
 	}
 }
 
+func TestID_String_Panic(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic for invalid ID type")
+		}
+	}()
+
+	id := ID{value: true} // Invalid type
+	id.String()
+}
+
 func TestID_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -62,6 +73,40 @@ func TestID_UnmarshalJSON(t *testing.T) {
 	}
 }
 
+func TestID_UnmarshalJSON_InvalidType(t *testing.T) {
+	tests := []struct {
+		name    string
+		json    string
+		wantErr bool
+	}{
+		{
+			name:    "boolean",
+			json:    `true`,
+			wantErr: true,
+		},
+		{
+			name:    "array",
+			json:    `[1,2,3]`,
+			wantErr: true,
+		},
+		{
+			name:    "object",
+			json:    `{"key":"value"}`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var id ID
+			err := json.Unmarshal([]byte(tt.json), &id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestID_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		id       ID
@@ -80,6 +125,14 @@ func TestID_MarshalJSON(t *testing.T) {
 		if string(result) != test.expected {
 			t.Errorf("MarshalJSON(%v) = %v; want %v", test.id, string(result), test.expected)
 		}
+	}
+}
+
+func TestID_MarshalJSON_InvalidType(t *testing.T) {
+	id := ID{value: true} // Invalid type
+	_, err := json.Marshal(id)
+	if err == nil {
+		t.Error("Expected error for invalid ID type")
 	}
 }
 
@@ -287,6 +340,47 @@ func TestConvertError(t *testing.T) {
 		if result.Code != test.expected.Code || result.Message != test.expected.Message || fmt.Sprintf("%v", result.Data) != fmt.Sprintf("%v", test.expected.Data) {
 			t.Errorf("convertError(%v) = %v; want %v", test.input, result, test.expected)
 		}
+	}
+}
+
+type customError struct {
+	errCode    int
+	errMessage string
+	errData    any
+}
+
+func (e customError) Error() string {
+	return e.errMessage
+}
+
+func (e customError) code() int {
+	return e.errCode
+}
+
+func (e customError) message() string {
+	return e.errMessage
+}
+
+func (e customError) data() any {
+	return e.errData
+}
+
+func TestConvertError_CustomError(t *testing.T) {
+	err := customError{
+		errCode:    -32001,
+		errMessage: "custom error",
+		errData:    "error data",
+	}
+
+	converted := convertError(err)
+	if converted.Code != -32001 {
+		t.Errorf("Expected code -32001, got %d", converted.Code)
+	}
+	if converted.Message != "custom error" {
+		t.Errorf("Expected message 'custom error', got %s", converted.Message)
+	}
+	if converted.Data != "error data" {
+		t.Errorf("Expected data 'error data', got %v", converted.Data)
 	}
 }
 
