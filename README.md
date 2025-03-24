@@ -52,6 +52,10 @@ To run the tests, use the `go test` command:
 go test ./...
 ```
 
+## Server implementations using this library
+
+- [mcp-server-pipecd](https://github.com/Warashi/mcp-server-pipecd)
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
