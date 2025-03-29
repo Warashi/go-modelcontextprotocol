@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.5](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.4...v0.0.5) - 2025-03-29
+- fix: sse transport by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/12
+
 ## [v0.0.4](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.3...v0.0.4) - 2025-03-29
 - fix: return empty list instead of nil for resources and resource templates by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/10
 
