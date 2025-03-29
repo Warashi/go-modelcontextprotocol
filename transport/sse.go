@@ -1,13 +1,13 @@
 package transport
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"iter"
-	"log"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -56,6 +56,9 @@ func NewSSE(prefix string, handler SessionHandler) (*SSE, error) {
 
 		baseURL = strings.TrimSuffix(u.String(), u.Path)
 		basePath = strings.TrimSuffix(u.Path, "/")
+		if !strings.HasPrefix(basePath, "/") {
+			basePath = "/" + basePath
+		}
 	}
 
 	var seed [32]byte
@@ -73,7 +76,6 @@ func NewSSE(prefix string, handler SessionHandler) (*SSE, error) {
 }
 
 func (s *SSE) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("ServeHTTP", r.URL.Path)
 	if r.URL.Path == s.basePath || strings.TrimSuffix(r.URL.Path, "/") == s.basePath {
 		s.handleSSE(w, r)
 		return
@@ -170,7 +172,13 @@ func (s *SSE) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Unlock()
 
-	session.ch <- r.Body
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	session.ch <- bytes.NewReader(b)
 }
 
 type SSESession struct {

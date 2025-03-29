@@ -73,7 +73,7 @@ func TestNewSSE(t *testing.T) {
 			name:         "valid prefix root path",
 			prefix:       "http://localhost:8080",
 			wantBaseURL:  "http://localhost:8080",
-			wantBasePath: "",
+			wantBasePath: "/",
 			wantErr:      false,
 		},
 		{
