@@ -14,14 +14,14 @@ import (
 )
 
 type mockSessionHandler struct {
-	HandleSessionFunc func(context.Context, Session) (uint64, error)
+	HandleSessionFunc func(context.Context, uint64, Session) error
 }
 
-func (m *mockSessionHandler) HandleSession(ctx context.Context, s Session) (uint64, error) {
+func (m *mockSessionHandler) HandleSession(ctx context.Context, id uint64, s Session) error {
 	if m.HandleSessionFunc == nil {
-		return 0, nil
+		return nil
 	}
-	return m.HandleSessionFunc(ctx, s)
+	return m.HandleSessionFunc(ctx, id, s)
 }
 
 type mockFlusher struct {
@@ -73,7 +73,7 @@ func TestNewSSE(t *testing.T) {
 			name:         "valid prefix root path",
 			prefix:       "http://localhost:8080",
 			wantBaseURL:  "http://localhost:8080",
-			wantBasePath: "",
+			wantBasePath: "/",
 			wantErr:      false,
 		},
 		{
@@ -264,17 +264,17 @@ func (r *testResponseRecorder) Flush() {}
 // It sets a closed done channel to prevent blocking in handleSSE.
 type testSessionHandler struct{}
 
-func (h *testSessionHandler) HandleSession(ctx context.Context, s Session) (uint64, error) {
+func (h *testSessionHandler) HandleSession(ctx context.Context, id uint64, s Session) error {
 	// Assert that s is of type *SSESession
 	ssession, ok := s.(*SSESession)
 	if !ok {
-		return 0, errors.New("invalid session type")
+		return errors.New("invalid session type")
 	}
 	// Create and immediately close the done channel to unblock select in handleSSE.
 	ch := make(chan struct{})
 	close(ch)
 	ssession.done = ch
-	return 42, nil
+	return nil
 }
 
 // dummyFlusher implements a minimal writer and Flush for testing message handler.

@@ -22,11 +22,11 @@ type JSONReceiver interface {
 }
 
 type SessionHandler interface {
-	HandleSession(context.Context, Session) (id uint64, err error)
+	HandleSession(context.Context, uint64, Session) error
 }
 
-type SessionHandlerFunc func(context.Context, Session) (id uint64, err error)
+type SessionHandlerFunc func(context.Context, uint64, Session) error
 
-func (f SessionHandlerFunc) HandleSession(ctx context.Context, s Session) (id uint64, err error) {
-	return f(ctx, s)
+func (f SessionHandlerFunc) HandleSession(ctx context.Context, id uint64, s Session) error {
+	return f(ctx, id, s)
 }
