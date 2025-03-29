@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.3](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.2...v0.0.3) - 2025-03-29
+- fix: ignore errors from handleRawMessage by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/8
+
 ## [v0.0.2](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.1...v0.0.2) - 2025-03-29
 - docs: update README by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/6
 
