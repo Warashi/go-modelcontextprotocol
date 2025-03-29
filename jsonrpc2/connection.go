@@ -469,7 +469,8 @@ func (c *Conn) handleMessage(ctx context.Context, msg json.RawMessage) error {
 			defer c.mutex.Unlock()
 			return c.transport.Send(b)
 		}
-		return c.handleRawMessage(ctx, msg)
+		_ = c.handleRawMessage(ctx, msg)
+		return nil
 	}
 }
 
