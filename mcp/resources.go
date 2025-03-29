@@ -2,6 +2,8 @@ package mcp
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 
 	"github.com/Warashi/go-modelcontextprotocol/router"
 )
@@ -97,6 +99,19 @@ type BlobResourceContents struct {
 
 // isResourceContents implements isResourceContents.
 func (BlobResourceContents) isResourceContents() {}
+
+// MarshalJSON implements json.Marshaler.
+func (r BlobResourceContents) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		URI      string `json:"uri"`
+		MimeType string `json:"mimeType,omitempty,omitzero"`
+		Blob     string `json:"blob"`
+	}{
+		URI:      r.URI,
+		MimeType: r.MimeType,
+		Blob:     base64.StdEncoding.EncodeToString(r.Blob),
+	})
+}
 
 // ResourceHandler is the handler of the resource methods.
 type ResourceReader interface {
