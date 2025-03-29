@@ -23,7 +23,7 @@ func TestServer_Serve(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		if _, err := server.Serve(ctx, transport.Discard{}); err != nil && err != context.Canceled {
+		if err := server.Serve(ctx, 1, transport.Discard{}); err != nil && err != context.Canceled {
 			t.Errorf("Serve() error = %v", err)
 		}
 	}()

@@ -1,11 +1,14 @@
 package transport
 
 import (
+	crand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"iter"
+	"log"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"path"
@@ -22,8 +25,9 @@ type SSE struct {
 	// handler is the handler for the SSE session.
 	handler SessionHandler
 
-	mu       sync.Mutex
-	sessions map[uint64]*SSESession
+	idSampler *rand.ChaCha8
+	mu        sync.Mutex
+	sessions  map[uint64]*SSESession
 }
 
 func NewSSE(prefix string, handler SessionHandler) (*SSE, error) {
@@ -54,14 +58,22 @@ func NewSSE(prefix string, handler SessionHandler) (*SSE, error) {
 		basePath = strings.TrimSuffix(u.Path, "/")
 	}
 
+	var seed [32]byte
+	if _, err := crand.Read(seed[:]); err != nil {
+		return nil, fmt.Errorf("failed to generate seed: %w", err)
+	}
+
 	return &SSE{
-		baseURL:  baseURL,
-		basePath: basePath,
-		handler:  handler,
+		baseURL:   baseURL,
+		basePath:  basePath,
+		handler:   handler,
+		idSampler: rand.NewChaCha8(seed),
+		sessions:  make(map[uint64]*SSESession),
 	}, nil
 }
 
 func (s *SSE) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("ServeHTTP", r.URL.Path)
 	if r.URL.Path == s.basePath || strings.TrimSuffix(r.URL.Path, "/") == s.basePath {
 		s.handleSSE(w, r)
 		return
@@ -95,11 +107,7 @@ func (s *SSE) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	id, err := s.handler.HandleSession(r.Context(), session)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	id := s.idSampler.Uint64()
 
 	s.mu.Lock()
 	s.sessions[id] = session
@@ -112,6 +120,12 @@ func (s *SSE) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "event: endpoint\ndata: %s\n\n", p)
+	flusher.Flush()
+
+	if err := s.handler.HandleSession(r.Context(), id, session); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	select {
 	case <-session.done:

@@ -13,7 +13,7 @@ func TestServer_Ping(t *testing.T) {
 	a, b := transport.NewPipe()
 
 	server := mustNewServer(t, "test", "1.0.0")
-	go server.Serve(context.Background(), a)
+	go server.Serve(context.Background(), 1, a)
 
 	client := jsonrpc2.NewConnection(b)
 	client.Open()

@@ -2,9 +2,7 @@ package mcp
 
 import (
 	"context"
-	crand "crypto/rand"
 	"errors"
-	"math/rand/v2"
 	"net/http"
 	"sync"
 
@@ -73,17 +71,11 @@ type Server struct {
 	resourceReader    ResourceReader
 
 	mu          sync.Mutex
-	idSampler   *rand.ChaCha8
 	connections map[uint64]*jsonrpc2.Conn
 }
 
 // NewServer creates a new MCP server.
 func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
-	var seed [32]byte
-	_, err := crand.Read(seed[:])
-	if err != nil {
-		return nil, err
-	}
 
 	s := &Server{
 		name:              name,
@@ -91,7 +83,6 @@ func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
 		tools:             make(map[string]tool),
 		resources:         make([]Resource, 0),         // to return empty list instead of nil
 		resourceTemplates: make([]ResourceTemplate, 0), // to return empty list instead of nil
-		idSampler:         rand.NewChaCha8(seed),
 		connections:       make(map[uint64]*jsonrpc2.Conn),
 	}
 
@@ -125,26 +116,24 @@ func (s *Server) SSEHandler(baseURL string) (http.Handler, error) {
 }
 
 // HandleSession handles a session.
-func (s *Server) HandleSession(ctx context.Context, t transport.Session) (id uint64, err error) {
-	return s.Serve(ctx, t)
+func (s *Server) HandleSession(ctx context.Context, id uint64, t transport.Session) error {
+	return s.Serve(ctx, id, t)
 }
 
 // ServeStdio serves the server over stdin and stdout.
 func (s *Server) ServeStdio(ctx context.Context) error {
-	_, err := s.Serve(ctx, transport.NewStdio())
-	return err
+	return s.Serve(ctx, 0, transport.NewStdio())
 }
 
 // Serve starts the server.
-func (s *Server) Serve(ctx context.Context, t transport.Session) (uint64, error) {
+func (s *Server) Serve(ctx context.Context, id uint64, t transport.Session) error {
 	conn := jsonrpc2.NewConnection(t, s.initOpts...)
 
 	s.mu.Lock()
-	id := s.idSampler.Uint64()
 	s.connections[id] = conn
 	s.mu.Unlock()
 
-	return id, conn.Serve(ctx)
+	return conn.Serve(ctx)
 }
 
 // Close closes the server.
