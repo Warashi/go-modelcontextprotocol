@@ -1,5 +1,10 @@
 # go-modelcontextprotocol
 
+[![Test](https://github.com/Warashi/go-modelcontextprotocol/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/Warashi/go-modelcontextprotocol/actions/workflows/test.yaml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Warashi/go-modelcontextprotocol?cache)](https://goreportcard.com/report/github.com/Warashi/go-modelcontextprotocol)
+[![GoDoc](https://pkg.go.dev/badge/github.com/Warashi/go-modelcontextprotocol.svg)](https://pkg.go.dev/github.com/Warashi/go-modelcontextprotocol)
+
+
 `go-modelcontextprotocol` is a Go library that implements the Model Context Protocol (MCP). It provides a framework for building AI/LLM service backends with support for tools, resources, and various transport mechanisms.
 
 ## Project Structure
