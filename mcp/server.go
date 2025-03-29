@@ -86,11 +86,13 @@ func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
 	}
 
 	s := &Server{
-		name:        name,
-		version:     version,
-		tools:       make(map[string]tool),
-		idSampler:   rand.NewChaCha8(seed),
-		connections: make(map[uint64]*jsonrpc2.Conn),
+		name:              name,
+		version:           version,
+		tools:             make(map[string]tool),
+		resources:         make([]Resource, 0),         // to return empty list instead of nil
+		resourceTemplates: make([]ResourceTemplate, 0), // to return empty list instead of nil
+		idSampler:         rand.NewChaCha8(seed),
+		connections:       make(map[uint64]*jsonrpc2.Conn),
 	}
 
 	for _, opt := range opts {
