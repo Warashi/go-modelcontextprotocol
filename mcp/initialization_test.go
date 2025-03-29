@@ -17,7 +17,7 @@ func TestServer_Initialize(t *testing.T) {
 	}{
 		{
 			name:   "empty server",
-			server: NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{}),
+			server: mustNewServer(t, "test", "1.0.0"),
 			request: &Request[InitializationRequestParams]{
 				Params: InitializationRequestParams{
 					ProtocolVersion: SupportedProtocolVersion,
@@ -41,7 +41,7 @@ func TestServer_Initialize(t *testing.T) {
 		},
 		{
 			name: "server with tools",
-			server: NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{},
+			server: mustNewServer(t, "test", "1.0.0",
 				WithTool(NewToolFunc("test", "Test tool", jsonschema.Object{}, func(ctx context.Context, input string) (string, error) {
 					return "success", nil
 				})),
@@ -71,7 +71,7 @@ func TestServer_Initialize(t *testing.T) {
 		},
 		{
 			name: "server with resources",
-			server: NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{},
+			server: mustNewServer(t, "test", "1.0.0",
 				WithResource(Resource{
 					URI:         "test://example.com/resource",
 					Name:        "Test Resource",
@@ -105,7 +105,7 @@ func TestServer_Initialize(t *testing.T) {
 		},
 		{
 			name: "server with resource templates",
-			server: NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{},
+			server: mustNewServer(t, "test", "1.0.0",
 				WithResourceTemplate(ResourceTemplate{
 					URITemplate: "test://example.com/template/{param}",
 					Name:        "Test Template",

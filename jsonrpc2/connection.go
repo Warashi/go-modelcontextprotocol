@@ -1,14 +1,16 @@
 package jsonrpc2
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"github.com/Warashi/go-modelcontextprotocol/transport"
 )
 
 // Method represents a JSON-RPC 2.0 request method.
@@ -297,24 +299,20 @@ func WithHandlerFunc[Params, Result any](method string, h HandlerFunc[Params, Re
 
 // Conn represents a JSON-RPC 2.0 connection.
 type Conn struct {
-	reader   io.Reader
-	writer   io.Writer
-	enc      *json.Encoder
-	dec      *json.Decoder
-	mutex    sync.Mutex
-	pending  map[ID]chan json.RawMessage
-	handlers map[Method]func(ctx context.Context, req json.RawMessage) (any, error)
-	closed   chan struct{}
+	transport transport.Session
+	mutex     sync.Mutex
+	pending   map[ID]chan json.RawMessage
+	handlers  map[Method]func(ctx context.Context, req json.RawMessage) (any, error)
+	closed    chan struct{}
 }
 
 // NewConnection creates a new JSON-RPC 2.0 connection.
-func NewConnection(r io.Reader, w io.Writer, opts ...ConnectionInitializationOption) *Conn {
+func NewConnection(transport transport.Session, opts ...ConnectionInitializationOption) *Conn {
 	conn := &Conn{
-		enc:      json.NewEncoder(w),
-		dec:      json.NewDecoder(r),
-		pending:  make(map[ID]chan json.RawMessage),
-		handlers: make(map[Method]func(ctx context.Context, req json.RawMessage) (any, error)),
-		closed:   make(chan struct{}),
+		transport: transport,
+		pending:   make(map[ID]chan json.RawMessage),
+		handlers:  make(map[Method]func(ctx context.Context, req json.RawMessage) (any, error)),
+		closed:    make(chan struct{}),
 	}
 
 	for _, opt := range opts {
@@ -342,6 +340,8 @@ func (c *Conn) Open() error {
 // Serve will return an error if the connection is closed.
 func (c *Conn) Serve(ctx context.Context) error {
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-c.closed:
 		return errors.New("connection closed")
 	default:
@@ -368,40 +368,51 @@ func (c *Conn) Close() error {
 		// Not closed yet
 		// Close the connection
 		close(c.closed)
-		var err error
-		if closer, ok := c.writer.(io.Closer); ok {
-			err = errors.Join(err, closer.Close())
-		}
-		if closer, ok := c.reader.(io.Closer); ok {
-			err = errors.Join(err, closer.Close())
-		}
-		return err
+		return c.transport.Close()
 	}
 }
 
 // Call sends a request to the server and waits for a response.
 func (c *Conn) Call(ctx context.Context, id ID, method string, params any, result any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.closed:
+		return errors.New("connection closed")
+	default:
+	}
+
 	req := &Request[any]{
 		ID:     id,
 		Method: Method(method),
 		Params: params,
 	}
 
+	b, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
 	respCh := make(chan json.RawMessage, 1)
 
 	c.mutex.Lock()
 	c.pending[id] = respCh
-	if err := c.enc.Encode(req); err != nil {
+	c.mutex.Unlock()
+
+	if err := c.transport.Send(b); err != nil {
+		c.mutex.Lock()
 		delete(c.pending, id)
 		c.mutex.Unlock()
 		return err
 	}
-	c.mutex.Unlock()
 
 	select {
 	case resp := <-respCh:
 		return json.Unmarshal(resp, result)
 	case <-ctx.Done():
+		c.mutex.Lock()
+		delete(c.pending, id)
+		c.mutex.Unlock()
 		return ctx.Err()
 	}
 }
@@ -409,25 +420,61 @@ func (c *Conn) Call(ctx context.Context, id ID, method string, params any, resul
 // serve starts serving requests.
 // serve will return an error if the connection is closed.
 func (c *Conn) serve(ctx context.Context) error {
-	for {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.closed:
+		return errors.New("connection closed")
+	default:
+	}
+
+	for msg := range c.transport.Receive() {
+		// close the connection if the context is done or the connection is closed
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-c.closed:
 			return errors.New("connection closed")
 		default:
-			c.handleMessage(ctx)
+			// connection is not closed
+			// handle the message
+			if err := c.handleMessage(ctx, msg); err != nil {
+				return err
+			}
 		}
 	}
+	// connection is closed
+	return errors.New("connection closed")
 }
 
 // handleMessage reads a message from the connection and handles it.
-func (c *Conn) handleMessage(ctx context.Context) error {
-	var msg json.RawMessage
-	if err := c.dec.Decode(&msg); err != nil {
-		return errors.Join(err, c.Close())
+func (c *Conn) handleMessage(ctx context.Context, msg json.RawMessage) error {
+	trimmedMsg := bytes.TrimSpace(msg)
+	if len(trimmedMsg) > 0 && trimmedMsg[0] == '[' {
+		var batch []json.RawMessage
+		if err := json.Unmarshal(msg, &batch); err != nil {
+			errResp := c.generateErrorResponse(ID{value: nil}, CodeParseError, "Parse error")
+			b, _ := json.Marshal(errResp)
+			c.mutex.Lock()
+			defer c.mutex.Unlock()
+			return c.transport.Send(b)
+		}
+		return c.handleBatchMessage(ctx, batch)
+	} else {
+		var obj map[string]any
+		if err := json.Unmarshal(msg, &obj); err != nil {
+			errResp := c.generateErrorResponse(ID{value: nil}, CodeParseError, "Parse error")
+			b, _ := json.Marshal(errResp)
+			c.mutex.Lock()
+			defer c.mutex.Unlock()
+			return c.transport.Send(b)
+		}
+		return c.handleRawMessage(ctx, msg)
 	}
+}
 
+// handleRawMessage handles a JSON-RPC 2.0 single message.
+func (c *Conn) handleRawMessage(ctx context.Context, msg json.RawMessage) error {
 	switch t, err := getMessageType(msg); t {
 	case messageRequest:
 		return c.handleRequest(ctx, msg)
@@ -536,10 +583,15 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if err := c.enc.Encode(&Response[any, any]{
+	b, err := json.Marshal(&Response[any, any]{
 		ID:     id,
 		Result: resp,
-	}); err != nil {
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := c.transport.Send(b); err != nil {
 		return err
 	}
 
@@ -561,10 +613,15 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	if err := c.enc.Encode(&Response[any, any]{
+	b, err := json.Marshal(&Response[any, any]{
 		ID:    id,
 		Error: convertError(err),
-	}); err != nil {
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := c.transport.Send(b); err != nil {
 		return err
 	}
 
@@ -584,18 +641,26 @@ func (c *Conn) handleResponse(ctx context.Context, msg json.RawMessage) error {
 		return err
 	}
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	var ch chan json.RawMessage
+	var ok bool
 
-	ch, ok := c.pending[resp.ID]
+	c.mutex.Lock()
+	ch, ok = c.pending[resp.ID]
+	if ok {
+		delete(c.pending, resp.ID)
+	}
+	c.mutex.Unlock()
+
 	if !ok {
 		return errors.New("invalid response ID")
 	}
 
-	ch <- msg
-	delete(c.pending, resp.ID)
-
-	return nil
+	select {
+	case ch <- msg:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // handleNotification handles a JSON-RPC 2.0 notification message.
@@ -657,5 +722,95 @@ func Notify[Params any](ctx context.Context, conn *Conn, method string, params P
 		Params: params,
 	}
 
-	return conn.enc.Encode(req)
+	b, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	return conn.transport.Send(b)
+}
+
+// generateErrorResponse creates a JSON-RPC 2.0 error response.
+func (c *Conn) generateErrorResponse(id ID, code int, message string) *Response[any, any] {
+	return &Response[any, any]{
+		ID:    id,
+		Error: NewError[any](code, message, nil),
+	}
+}
+
+// handleBatchMessage processes a batch of JSON-RPC 2.0 messages, collects responses for requests and sends a single batch response.
+func (c *Conn) handleBatchMessage(ctx context.Context, batch []json.RawMessage) error {
+	if len(batch) == 0 {
+		errResp := c.generateErrorResponse(ID{value: nil}, CodeInvalidRequest, "Invalid Request")
+		b, _ := json.Marshal(errResp)
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+		return c.transport.Send(b)
+	}
+
+	var responses []json.RawMessage
+
+	for _, msg := range batch {
+		mType, err := getMessageType(msg)
+		if err != nil {
+			errResp := c.generateErrorResponse(ID{value: nil}, CodeInvalidRequest, "Invalid Request")
+			b, _ := json.Marshal(errResp)
+			responses = append(responses, b)
+			continue
+		}
+
+		switch mType {
+		case messageRequest:
+			var req Request[json.RawMessage]
+			if err := json.Unmarshal(msg, &req); err != nil {
+				errResp := c.generateErrorResponse(ID{value: nil}, CodeParseError, "Parse error")
+				b, _ := json.Marshal(errResp)
+				responses = append(responses, b)
+				continue
+			}
+
+			handler, ok := c.handlers[req.Method]
+			if !ok {
+				errResp := c.generateErrorResponse(req.ID, CodeMethodNotFound, "method not found")
+				b, _ := json.Marshal(errResp)
+				responses = append(responses, b)
+				continue
+			}
+
+			result, err := handler(ctx, msg)
+			if err != nil {
+				errResp := c.generateErrorResponse(req.ID, CodeInternalError, err.Error())
+				b, _ := json.Marshal(errResp)
+				responses = append(responses, b)
+				continue
+			}
+
+			resp := Response[any, any]{
+				ID:     req.ID,
+				Result: result,
+			}
+			b, _ := json.Marshal(resp)
+			responses = append(responses, b)
+		case messageNotification:
+			var req Request[json.RawMessage]
+			if err := json.Unmarshal(msg, &req); err != nil {
+				continue
+			}
+			if handler, ok := c.handlers[req.Method]; ok {
+				handler(ctx, msg)
+			}
+			// No response for notifications
+		default:
+			// Ignore other message types in batch
+		}
+	}
+
+	if len(responses) > 0 {
+		batchResp, _ := json.Marshal(responses)
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+		return c.transport.Send(batchResp)
+	}
+
+	return nil
 }

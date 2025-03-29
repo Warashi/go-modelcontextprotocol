@@ -2,21 +2,20 @@ package mcp
 
 import (
 	"context"
-	"io"
 	"reflect"
 	"testing"
 
 	"github.com/Warashi/go-modelcontextprotocol/jsonrpc2"
+	"github.com/Warashi/go-modelcontextprotocol/transport"
 )
 
 func TestServer_Ping(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	server := NewServer("test", "1.0.0", r1, w2)
-	go server.Serve(context.Background())
+	server := mustNewServer(t, "test", "1.0.0")
+	go server.Serve(context.Background(), a)
 
-	client := jsonrpc2.NewConnection(r2, w1)
+	client := jsonrpc2.NewConnection(b)
 	client.Open()
 
 	result, err := jsonrpc2.Call[any, any](t.Context(), client, "ping", struct{}{})

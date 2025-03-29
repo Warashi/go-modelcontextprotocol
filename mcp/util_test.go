@@ -2,10 +2,19 @@ package mcp
 
 import (
 	"encoding/json"
-	"io"
 	"reflect"
 	"testing"
 )
+
+func mustNewServer(t *testing.T, name, version string, opts ...ServerOption) *Server {
+	t.Helper()
+
+	s, err := NewServer(name, version, opts...)
+	if err != nil {
+		t.Fatalf("Failed to create server: %s", err)
+	}
+	return s
+}
 
 // assertJSONEqual checks if two JSON strings are equal.
 func assertJSONEqual(t *testing.T, expected, actual string) {
@@ -25,9 +34,3 @@ func assertJSONEqual(t *testing.T, expected, actual string) {
 		t.Errorf("JSON not equal.\nExpected: %s\nActual: %s", expected, actual)
 	}
 }
-
-// nopReadWriter is a no-op implementation of io.ReadWriter for testing.
-type nopReadWriter struct{}
-
-func (nopReadWriter) Read(p []byte) (n int, err error)  { return 0, io.EOF }
-func (nopReadWriter) Write(p []byte) (n int, err error) { return len(p), nil }

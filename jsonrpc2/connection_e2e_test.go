@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Warashi/go-modelcontextprotocol/transport"
 )
 
 type testHandler struct{}
@@ -18,12 +19,11 @@ func (h *testHandler) HandleRequest(ctx context.Context, req map[string]any) (ma
 }
 
 func TestConn_Call(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	conn1 := NewConnection(r1, w2, WithHandler("testMethod", &testHandler{}))
+	conn1 := NewConnection(a, WithHandler("testMethod", &testHandler{}))
 	go conn1.Serve(t.Context())
-	conn2 := NewConnection(r2, w1)
+	conn2 := NewConnection(b)
 	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -42,12 +42,11 @@ func TestConn_Call(t *testing.T) {
 }
 
 func TestConn_MethodNotFound(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	conn1 := NewConnection(r1, w2, WithHandler("testMethod", &testHandler{}))
+	conn1 := NewConnection(a, WithHandler("testMethod", &testHandler{}))
 	go conn1.Serve(t.Context())
-	conn2 := NewConnection(r2, w1)
+	conn2 := NewConnection(b)
 	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -72,17 +71,16 @@ func jsonEqual(a, b any) bool {
 }
 
 func TestConn_Notification(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
 	var called atomic.Bool
 
-	conn1 := NewConnection(r1, w2, WithHandler("testMethod", HandlerFunc[any, any](func(ctx context.Context, req any) (any, error) {
+	conn1 := NewConnection(a, WithHandler("testMethod", HandlerFunc[any, any](func(ctx context.Context, req any) (any, error) {
 		called.Store(true)
 		return nil, nil
 	})))
 	go conn1.Serve(t.Context())
-	conn2 := NewConnection(r2, w1)
+	conn2 := NewConnection(b)
 	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -103,16 +101,15 @@ func TestConn_Notification(t *testing.T) {
 }
 
 func TestConn_WithHandlerFunc(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
 	called := false
-	conn1 := NewConnection(r1, w2, WithHandlerFunc("testMethod", func(ctx context.Context, req any) (any, error) {
+	conn1 := NewConnection(a, WithHandlerFunc("testMethod", func(ctx context.Context, req any) (any, error) {
 		called = true
 		return map[string]any{"response": "success"}, nil
 	}))
 	go conn1.Serve(t.Context())
-	conn2 := NewConnection(r2, w1)
+	conn2 := NewConnection(b)
 	conn2.Open()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
@@ -135,11 +132,10 @@ func TestConn_WithHandlerFunc(t *testing.T) {
 }
 
 func TestConn_Close(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	conn1 := NewConnection(r1, w2)
-	conn2 := NewConnection(r2, w1)
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
 
 	// Test closing multiple times
 	if err := conn1.Close(); err != nil {
@@ -164,11 +160,10 @@ func TestConn_Close(t *testing.T) {
 }
 
 func TestConn_ServeErrors(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	conn1 := NewConnection(r1, w2)
-	conn2 := NewConnection(r2, w1)
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
 
 	// Test context cancellation
 	ctx, cancel := context.WithCancel(context.Background())
@@ -188,11 +183,10 @@ func TestConn_ServeErrors(t *testing.T) {
 }
 
 func TestConn_CallErrors(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	conn1 := NewConnection(r1, w2)
-	conn2 := NewConnection(r2, w1)
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
 	go conn1.Serve(context.Background())
 	conn2.Open()
 
@@ -223,11 +217,10 @@ func TestConn_CallErrors(t *testing.T) {
 }
 
 func TestConn_SendResponseAndError(t *testing.T) {
-	r1, w1 := io.Pipe()
-	r2, w2 := io.Pipe()
+	a, b := transport.NewPipe()
 
-	conn1 := NewConnection(r1, w2)
-	conn2 := NewConnection(r2, w1)
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
 	go conn1.Serve(context.Background())
 
 	// Test sendResponse with null ID

@@ -13,7 +13,7 @@ func TestServer_ListTools(t *testing.T) {
 	ctx := context.Background()
 
 	// Test case 1: Empty tools
-	server := NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{})
+	server := mustNewServer(t, "test", "1.0.0")
 
 	result, err := server.ListTools(ctx, &Request[ListToolsRequestParams]{
 		Params: ListToolsRequestParams{},
@@ -36,7 +36,7 @@ func TestServer_ListTools(t *testing.T) {
 		return "result2", nil
 	})
 
-	server = NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{},
+	server = mustNewServer(t, "test", "1.0.0",
 		WithTool(tool1),
 		WithTool(tool2),
 	)
@@ -76,7 +76,7 @@ func TestServer_CallTool(t *testing.T) {
 	ctx := context.Background()
 
 	// Test case 1: Tool not found
-	server := NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{})
+	server := mustNewServer(t, "test", "1.0.0")
 
 	_, err := server.CallTool(ctx, &Request[ToolCallRequestParams]{
 		Params: ToolCallRequestParams{
@@ -105,7 +105,7 @@ func TestServer_CallTool(t *testing.T) {
 	tool := NewToolFunc("test", "Test tool", schema, func(ctx context.Context, input map[string]string) (string, error) {
 		return "success", nil
 	})
-	server = NewServer("test", "1.0.0", nopReadWriter{}, nopReadWriter{},
+	server = mustNewServer(t, "test", "1.0.0",
 		WithTool(tool),
 	)
 
