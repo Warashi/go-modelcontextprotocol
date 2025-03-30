@@ -1,434 +1,256 @@
 package jsonrpc2
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/Warashi/go-modelcontextprotocol/transport"
 )
 
-func TestID_IsNull(t *testing.T) {
-	tests := []struct {
-		id       ID
-		expected bool
-	}{
-		{id: ID{value: nil}, expected: true},
-		{id: ID{value: "test"}, expected: false},
-		{id: ID{value: 123}, expected: false},
+type testHandler struct{}
+
+func (h *testHandler) HandleRequest(ctx context.Context, req map[string]any) (map[string]any, error) {
+	return map[string]any{"response": "success"}, nil
+}
+
+func TestConn_Call(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	conn1 := NewConnection(a, WithHandler("testMethod", &testHandler{}))
+	go conn1.Serve(t.Context())
+	conn2 := NewConnection(b)
+	conn2.Open()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	params := map[string]any{"param1": "value1"}
+	result, err := Call[any, any](ctx, conn2, "testMethod", params)
+	if err != nil {
+		t.Fatalf("Call failed: %v", err)
 	}
 
-	for _, test := range tests {
-		if result := test.id.IsNull(); result != test.expected {
-			t.Errorf("ID(%v).IsNull() = %v; want %v", test.id, result, test.expected)
-		}
+	expected := map[string]any{"response": "success"}
+	if !jsonEqual(result, expected) {
+		t.Errorf("Call result = %v; want %v", result, expected)
 	}
 }
 
-func TestID_String(t *testing.T) {
-	tests := []struct {
-		id       ID
-		expected string
-	}{
-		{id: ID{value: "test"}, expected: "test"},
-		{id: ID{value: 123}, expected: "123"},
-		{id: ID{value: nil}, expected: ""},
-	}
+func TestConn_MethodNotFound(t *testing.T) {
+	a, b := transport.NewPipe()
 
-	for _, test := range tests {
-		if result := test.id.String(); result != test.expected {
-			t.Errorf("ID(%v).String() = %v; want %v", test.id, result, test.expected)
-		}
-	}
-}
+	conn1 := NewConnection(a, WithHandler("testMethod", &testHandler{}))
+	go conn1.Serve(t.Context())
+	conn2 := NewConnection(b)
+	conn2.Open()
 
-func TestID_String_Panic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("Expected panic for invalid ID type")
-		}
-	}()
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
 
-	id := ID{value: true} // Invalid type
-	_ = id.String()
-}
-
-func TestID_UnmarshalJSON(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected ID
-	}{
-		{input: `"test"`, expected: ID{value: "test"}},
-		{input: `123`, expected: ID{value: 123}},
-		{input: `null`, expected: ID{value: nil}},
-	}
-
-	for _, test := range tests {
-		var id ID
-		if err := json.Unmarshal([]byte(test.input), &id); err != nil {
-			t.Errorf("UnmarshalJSON(%v) error: %v", test.input, err)
-		}
-		if id != test.expected {
-			t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, id, test.expected)
-		}
-	}
-}
-
-func TestID_UnmarshalJSON_InvalidType(t *testing.T) {
-	tests := []struct {
-		name    string
-		json    string
-		wantErr bool
-	}{
-		{
-			name:    "boolean",
-			json:    `true`,
-			wantErr: true,
-		},
-		{
-			name:    "array",
-			json:    `[1,2,3]`,
-			wantErr: true,
-		},
-		{
-			name:    "object",
-			json:    `{"key":"value"}`,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var id ID
-			err := json.Unmarshal([]byte(tt.json), &id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestID_MarshalJSON(t *testing.T) {
-	tests := []struct {
-		id       ID
-		expected string
-	}{
-		{id: ID{value: "test"}, expected: `"test"`},
-		{id: ID{value: 123}, expected: `123`},
-		{id: ID{value: nil}, expected: `null`},
-	}
-
-	for _, test := range tests {
-		result, err := json.Marshal(test.id)
-		if err != nil {
-			t.Errorf("MarshalJSON(%v) error: %v", test.id, err)
-		}
-		if string(result) != test.expected {
-			t.Errorf("MarshalJSON(%v) = %v; want %v", test.id, string(result), test.expected)
-		}
-	}
-}
-
-func TestID_MarshalJSON_InvalidType(t *testing.T) {
-	id := ID{value: true} // Invalid type
-	_, err := json.Marshal(id)
+	params := map[string]any{"param1": "value1"}
+	_, err := Call[any, any](ctx, conn2, "nonExistentMethod", params)
 	if err == nil {
-		t.Error("Expected error for invalid ID type")
+		t.Fatalf("Expected error, got nil")
+	}
+
+	expectedErrMsg := "method not found"
+	if err.Error() != expectedErrMsg {
+		t.Errorf("Expected error message %v, got %v", expectedErrMsg, err.Error())
 	}
 }
 
-func TestRequest_MarshalJSON(t *testing.T) {
-	tests := []struct {
-		req      *Request[any]
-		expected string
-	}{
-		{
-			req:      &Request[any]{ID: ID{value: "1"}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
-			expected: `{"jsonrpc":"2.0","id":"1","method":"testMethod","params":{"param1":"value1"}}`,
-		},
-		{
-			req:      &Request[any]{ID: ID{value: 1}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
-			expected: `{"jsonrpc":"2.0","id":1,"method":"testMethod","params":{"param1":"value1"}}`,
-		},
-		{
-			req:      &Request[any]{ID: ID{value: nil}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
-			expected: `{"jsonrpc":"2.0","method":"testMethod","params":{"param1":"value1"}}`,
-		},
+func jsonEqual(a, b any) bool {
+	aj, _ := json.Marshal(a)
+	bj, _ := json.Marshal(b)
+	return bytes.Equal(aj, bj)
+}
+
+func TestConn_Notification(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	var called atomic.Bool
+
+	conn1 := NewConnection(a, WithHandler("testMethod", HandlerFunc[any, any](func(ctx context.Context, req any) (any, error) {
+		called.Store(true)
+		return nil, nil
+	})))
+	go conn1.Serve(t.Context())
+	conn2 := NewConnection(b)
+	conn2.Open()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	params := map[string]any{"param1": "value1"}
+	err := Notify[any](ctx, conn2, "testMethod", params)
+	if err != nil {
+		t.Fatalf("Notify failed: %v", err)
 	}
 
-	for _, test := range tests {
-		result, err := json.Marshal(test.req)
-		if err != nil {
-			t.Errorf("MarshalJSON(%v) error: %v", test.req, err)
-		}
-		if string(result) != test.expected {
-			t.Errorf("MarshalJSON(%v) = %v; want %v", test.req, string(result), test.expected)
-		}
+	// Notify is asynchronous, so we need to wait for the handler to be called.
+	time.Sleep(1 * time.Millisecond)
+
+	if !called.Load() {
+		t.Errorf("Handler not called")
 	}
 }
 
-func TestRequest_UnmarshalJSON(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected Request[map[string]any]
-	}{
-		{
-			input:    `{"jsonrpc":"2.0","id":"1","method":"testMethod","params":{"param1":"value1"}}`,
-			expected: Request[map[string]any]{ID: ID{value: "1"}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
-		},
-		{
-			input:    `{"jsonrpc":"2.0","id":1,"method":"testMethod","params":{"param1":"value1"}}`,
-			expected: Request[map[string]any]{ID: ID{value: 1}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
-		},
-		{
-			input:    `{"jsonrpc":"2.0","method":"testMethod","params":{"param1":"value1"}}`,
-			expected: Request[map[string]any]{ID: ID{value: nil}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
-		},
+func TestConn_WithHandlerFunc(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	called := false
+	conn1 := NewConnection(a, WithHandlerFunc("testMethod", func(ctx context.Context, req any) (any, error) {
+		called = true
+		return map[string]any{"response": "success"}, nil
+	}))
+	go conn1.Serve(t.Context())
+	conn2 := NewConnection(b)
+	conn2.Open()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+	defer cancel()
+
+	params := map[string]any{"param1": "value1"}
+	result, err := Call[any, any, any](ctx, conn2, "testMethod", params)
+	if err != nil {
+		t.Fatalf("Call failed: %v", err)
 	}
 
-	for _, test := range tests {
-		var req Request[map[string]any]
-		if err := json.Unmarshal([]byte(test.input), &req); err != nil {
-			t.Errorf("UnmarshalJSON(%v) error: %v", test.input, err)
-		}
-		if req.ID != test.expected.ID || req.Method != test.expected.Method || fmt.Sprintf("%v", req.Params) != fmt.Sprintf("%v", test.expected.Params) {
-			t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, req, test.expected)
-		}
-	}
-}
-
-func TestResponse_MarshalJSON(t *testing.T) {
-	tests := []struct {
-		resp     *Response[any, any]
-		expected string
-	}{
-		{
-			resp:     &Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
-			expected: `{"jsonrpc":"2.0","id":"1","result":"result"}`,
-		},
-		{
-			resp:     &Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
-			expected: `{"jsonrpc":"2.0","id":1,"result":123}`,
-		},
-		{
-			resp:     &Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
-			expected: `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
-		},
+	expected := map[string]any{"response": "success"}
+	if !jsonEqual(result, expected) {
+		t.Errorf("Call result = %v; want %v", result, expected)
 	}
 
-	for _, test := range tests {
-		result, err := json.Marshal(test.resp)
-		if err != nil {
-			t.Errorf("MarshalJSON(%v) error: %v", test.resp, err)
-		}
-		if string(result) != test.expected {
-			t.Errorf("MarshalJSON(%v) = %v; want %v", test.resp, string(result), test.expected)
-		}
+	if !called {
+		t.Error("HandlerFunc was not called")
 	}
 }
 
-func TestResponse_UnmarshalJSON(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected Response[any, any]
-	}{
-		{
-			input:    `{"jsonrpc":"2.0","id":"1","result":"result"}`,
-			expected: Response[any, any]{ID: ID{value: "1"}, Result: "result", Error: Error[any]{}},
-		},
-		{
-			input:    `{"jsonrpc":"2.0","id":1,"result":123}`,
-			expected: Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
-		},
-		{
-			input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
-			expected: Response[any, any]{ID: ID{value: nil}, Result: nil, Error: Error[any]{Code: -32000, Message: "error"}},
-		},
+func TestConn_Close(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
+
+	// Test closing multiple times
+	if err := conn1.Close(); err != nil {
+		t.Errorf("First Close failed: %v", err)
 	}
 
-	for _, test := range tests {
-		var resp Response[any, any]
-		if err := json.Unmarshal([]byte(test.input), &resp); err != nil {
-			t.Errorf("UnmarshalJSON(%v) error: %v", test.input, err)
-		}
-		if resp.ID != test.expected.ID || fmt.Sprintf("%v", resp.Result) != fmt.Sprintf("%v", test.expected.Result) || resp.Error.Code != test.expected.Error.Code || resp.Error.Message != test.expected.Error.Message {
-			t.Errorf("UnmarshalJSON(%v) = %v; want %v", test.input, resp, test.expected)
-		}
+	if err := conn1.Close(); err != nil {
+		t.Errorf("Second Close should return nil, got: %v", err)
 	}
+
+	// Test that operations after close fail
+	if err := conn1.Open(); err == nil {
+		t.Error("Open after Close should fail")
+	}
+
+	if err := conn1.Serve(context.Background()); err == nil {
+		t.Error("Serve after Close should fail")
+	}
+
+	// Clean up
+	conn2.Close()
 }
 
-func TestError_Error(t *testing.T) {
-	tests := []struct {
-		err      Error[any]
-		expected string
-	}{
-		{err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
-		{err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
+func TestConn_ServeErrors(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
+
+	// Test context cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := conn1.Serve(ctx); err == nil {
+		t.Error("Serve with cancelled context should fail")
 	}
 
-	for _, test := range tests {
-		if result := test.err.Error(); result != test.expected {
-			t.Errorf("Error(%v).Error() = %v; want %v", test.err, result, test.expected)
-		}
+	// Test connection closed
+	conn1.Close()
+	if err := conn1.Serve(context.Background()); err == nil {
+		t.Error("Serve with closed connection should fail")
 	}
+
+	// Clean up
+	conn2.Close()
 }
 
-func TestError_code(t *testing.T) {
-	tests := []struct {
-		err      Error[any]
-		expected int
-	}{
-		{err: Error[any]{Code: -32000, Message: "error"}, expected: -32000},
-		{err: Error[any]{Code: -32001, Message: "another error"}, expected: -32001},
+func TestConn_CallErrors(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
+	go conn1.Serve(context.Background())
+	conn2.Open()
+
+	// Test context cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := Call[any, any](ctx, conn2, "testMethod", struct{}{})
+	if err == nil {
+		t.Error("Call with cancelled context should fail")
 	}
 
-	for _, test := range tests {
-		if result := test.err.code(); result != test.expected {
-			t.Errorf("Error(%v).code() = %v; want %v", test.err, result, test.expected)
-		}
+	// Test invalid method
+	ctx = context.Background()
+	_, err = Call[any, any](ctx, conn2, "nonExistentMethod", struct{}{})
+	if err == nil {
+		t.Error("Call with invalid method should fail")
 	}
+
+	// Test connection closed
+	conn2.Close()
+	_, err = Call[any, any](ctx, conn2, "testMethod", struct{}{})
+	if err == nil {
+		t.Error("Call with closed connection should fail")
+	}
+
+	// Clean up
+	conn1.Close()
 }
 
-func TestError_message(t *testing.T) {
-	tests := []struct {
-		err      Error[any]
-		expected string
-	}{
-		{err: Error[any]{Code: -32000, Message: "error"}, expected: "error"},
-		{err: Error[any]{Code: -32001, Message: "another error"}, expected: "another error"},
+func TestConn_SendResponseAndError(t *testing.T) {
+	a, b := transport.NewPipe()
+
+	conn1 := NewConnection(a)
+	conn2 := NewConnection(b)
+	go conn1.Serve(context.Background())
+
+	// Test sendResponse with null ID
+	ctx := context.Background()
+	err := conn1.sendResponse(ctx, ID{value: nil}, nil)
+	if err == nil {
+		t.Error("sendResponse with null ID should fail")
 	}
 
-	for _, test := range tests {
-		if result := test.err.message(); result != test.expected {
-			t.Errorf("Error(%v).message() = %v; want %v", test.err, result, test.expected)
-		}
-	}
-}
-
-func TestError_data(t *testing.T) {
-	tests := []struct {
-		err      Error[string]
-		expected string
-	}{
-		{err: Error[string]{Code: -32000, Message: "error", Data: "data"}, expected: "data"},
-		{err: Error[string]{Code: -32001, Message: "another error", Data: "more data"}, expected: "more data"},
+	// Test sendError with null ID
+	err = conn1.sendError(ctx, ID{value: nil}, errors.New("test error"))
+	if err == nil {
+		t.Error("sendError with null ID should fail")
 	}
 
-	for _, test := range tests {
-		if result := test.err.data(); result != test.expected {
-			t.Errorf("Error(%v).data() = %v; want %v", test.err, result, test.expected)
-		}
-	}
-}
-
-func TestConvertError(t *testing.T) {
-	tests := []struct {
-		input    error
-		expected Error[any]
-	}{
-		{
-			input:    errors.New("standard error"),
-			expected: Error[any]{Code: -32000, Message: "standard error", Data: errors.New("standard error")},
-		},
-		{
-			input:    NewError(-32001, "custom error", "data"),
-			expected: Error[any]{Code: -32001, Message: "custom error", Data: "data"},
-		},
+	// Test sendResponse with cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err = conn1.sendResponse(ctx, NewID("test"), nil)
+	if err == nil {
+		t.Error("sendResponse with cancelled context should fail")
 	}
 
-	for _, test := range tests {
-		result := convertError(test.input)
-		if result.Code != test.expected.Code || result.Message != test.expected.Message || fmt.Sprintf("%v", result.Data) != fmt.Sprintf("%v", test.expected.Data) {
-			t.Errorf("convertError(%v) = %v; want %v", test.input, result, test.expected)
-		}
-	}
-}
-
-type customError struct {
-	errCode    int
-	errMessage string
-	errData    any
-}
-
-func (e customError) Error() string {
-	return e.errMessage
-}
-
-func (e customError) code() int {
-	return e.errCode
-}
-
-func (e customError) message() string {
-	return e.errMessage
-}
-
-func (e customError) data() any {
-	return e.errData
-}
-
-func TestConvertError_CustomError(t *testing.T) {
-	err := customError{
-		errCode:    -32001,
-		errMessage: "custom error",
-		errData:    "error data",
+	// Test sendError with cancelled context
+	err = conn1.sendError(ctx, NewID("test"), errors.New("test error"))
+	if err == nil {
+		t.Error("sendError with cancelled context should fail")
 	}
 
-	converted := convertError(err)
-	if converted.Code != -32001 {
-		t.Errorf("Expected code -32001, got %d", converted.Code)
-	}
-	if converted.Message != "custom error" {
-		t.Errorf("Expected message 'custom error', got %s", converted.Message)
-	}
-	if converted.Data != "error data" {
-		t.Errorf("Expected data 'error data', got %v", converted.Data)
-	}
-}
-
-func TestGetMessageType(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected messageType
-		err      error
-	}{
-		{
-			input:    `{"jsonrpc":"2.0","method":"testMethod","id":1}`,
-			expected: messageRequest,
-			err:      nil,
-		},
-		{
-			input:    `{"jsonrpc":"2.0","method":"testMethod"}`,
-			expected: messageNotification,
-			err:      nil,
-		},
-		{
-			input:    `{"jsonrpc":"2.0","id":1,"result":"testResult"}`,
-			expected: messageResponse,
-			err:      nil,
-		},
-		{
-			input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
-			expected: messageResponse,
-			err:      nil,
-		},
-		{
-			input:    `{"jsonrpc":"2.0","result":"testResult"}`,
-			expected: 0,
-			err:      errors.New("invalid message type"),
-		},
-		{
-			input:    `{"jsonrpc":"1.0","method":"testMethod"}`,
-			expected: 0,
-			err:      errors.New("invalid JSON-RPC version"),
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.input, func(t *testing.T) {
-			var msg json.RawMessage = []byte(test.input)
-			result, err := getMessageType(msg)
-			if result != test.expected || (err != nil && err.Error() != test.err.Error()) {
-				t.Errorf("getMessageType(%v) = %v, %v; want %v, %v", test.input, result, err, test.expected, test.err)
-			}
-		})
-	}
+	// Clean up
+	conn1.Close()
+	conn2.Close()
 }
