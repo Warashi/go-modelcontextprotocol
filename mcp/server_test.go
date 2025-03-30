@@ -46,8 +46,8 @@ func TestServerOptions(t *testing.T) {
 		})
 		server := mustNewServer(t, "test", "1.0.0", WithCustomHandler("test_method", handler))
 
-		if len(server.initOpts) != 8 {
-			t.Errorf("expected 8 handlers, got %d", len(server.initOpts))
+		if len(server.initOpts) != 9 {
+			t.Errorf("expected 9 handlers, got %d", len(server.initOpts))
 		}
 	})
 
@@ -57,8 +57,8 @@ func TestServerOptions(t *testing.T) {
 		}
 		server := mustNewServer(t, "test", "1.0.0", WithCustomHandlerFunc("test_method", handlerFunc))
 
-		if len(server.initOpts) != 8 {
-			t.Errorf("expected 8 handlers, got %d", len(server.initOpts))
+		if len(server.initOpts) != 9 {
+			t.Errorf("expected 9 handlers, got %d", len(server.initOpts))
 		}
 	})
 

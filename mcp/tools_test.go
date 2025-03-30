@@ -52,7 +52,7 @@ func TestServer_ListTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to marshal result: %v", err)
 	}
-	assertJSONEqual(t, `{"nextCursor":"","tools":[{"name":"tool1","description":"Test tool 1","inputSchema":{"type":"object","additionalProperties":false,"properties":null}},{"name":"tool2","description":"Test tool 2","inputSchema":{"type":"object","additionalProperties":false,"properties":null}}]}`, string(got))
+	assertJSONEqual(t, `{"nextCursor":"","tools":[{"name":"tool1","description":"Test tool 1","inputSchema":{"type":"object","additionalProperties":false,"properties":{}}},{"name":"tool2","description":"Test tool 2","inputSchema":{"type":"object","additionalProperties":false,"properties":{}}}]}`, string(got))
 
 	// Test case 3: With cursor (should return error)
 	_, err = server.ListTools(ctx, &Request[ListToolsRequestParams]{

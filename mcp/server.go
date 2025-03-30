@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -57,6 +58,13 @@ func WithResourceReader(reader ResourceReader) ServerOption {
 	}
 }
 
+// WithLogger sets a logger for the server.
+func WithLogger(logger *slog.Logger) ServerOption {
+	return func(s *Server) {
+		s.logger = logger
+	}
+}
+
 // Server is a MCP server.
 type Server struct {
 	name    string
@@ -72,11 +80,11 @@ type Server struct {
 
 	mu          sync.Mutex
 	connections map[uint64]*jsonrpc2.Conn
+	logger      *slog.Logger
 }
 
 // NewServer creates a new MCP server.
 func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
-
 	s := &Server{
 		name:              name,
 		version:           version,
@@ -99,6 +107,7 @@ func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
 		jsonrpc2.WithHandlerFunc("resources/list", s.ListResources),
 		jsonrpc2.WithHandlerFunc("resources/read", s.ReadResource),
 		jsonrpc2.WithHandlerFunc("resources/templates/list", s.ListResourceTemplates),
+		jsonrpc2.WithLogger(s.logger),
 	)
 
 	// append custom init opts after default handlers
@@ -147,4 +156,10 @@ func (s *Server) Close() error {
 	}
 
 	return err
+}
+
+func (s *Server) log(msg string, args ...any) {
+	if s.logger != nil {
+		s.logger.Debug(msg, args...)
+	}
 }

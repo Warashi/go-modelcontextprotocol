@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"sync"
 
 	"github.com/Warashi/go-modelcontextprotocol/transport"
@@ -44,9 +45,17 @@ func WithHandler[Params, Result any](method string, h Handler[Params, Result]) C
 	}
 }
 
+// WithHandlerFunc registers a request handler function.
 func WithHandlerFunc[Params, Result any](method string, h HandlerFunc[Params, Result]) ConnectionInitializationOption {
 	return func(c *Conn) {
 		RegisterHandler(c, method, h)
+	}
+}
+
+// WithLogger sets a logger for the connection.
+func WithLogger(logger *slog.Logger) ConnectionInitializationOption {
+	return func(c *Conn) {
+		c.logger = logger
 	}
 }
 
@@ -57,6 +66,7 @@ type Conn struct {
 	pending   map[ID]chan json.RawMessage
 	handlers  map[Method]func(ctx context.Context, req json.RawMessage) (any, error)
 	closed    chan struct{}
+	logger    *slog.Logger
 }
 
 // NewConnection creates a new JSON-RPC 2.0 connection.
@@ -244,8 +254,16 @@ func (c *Conn) handleRawMessage(ctx context.Context, msg json.RawMessage) error 
 	}
 }
 
+func (c *Conn) log(msg string, args ...any) {
+	if c.logger != nil {
+		c.logger.Debug(msg, args...)
+	}
+}
+
 // handleRequest handles a JSON-RPC 2.0 request message.
 func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
+	c.log("handleRequest: %s", msg)
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -293,6 +311,8 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 		return err
 	}
 
+	c.log("sendResponse: %s", b)
+
 	if err := c.transport.Send(b); err != nil {
 		return err
 	}
@@ -323,6 +343,8 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 		return err
 	}
 
+	c.log("sendError: %s", b)
+
 	if err := c.transport.Send(b); err != nil {
 		return err
 	}
@@ -332,6 +354,8 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 
 // handleResponse handles a JSON-RPC 2.0 response message.
 func (c *Conn) handleResponse(ctx context.Context, msg json.RawMessage) error {
+	c.log("handleResponse: %s", msg)
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
