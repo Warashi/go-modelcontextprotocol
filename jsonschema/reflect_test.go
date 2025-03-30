@@ -21,6 +21,13 @@ type nestedStruct struct {
 	Value string `json:"value" jsonschema:"required"`
 }
 
+type pointerStruct struct {
+	Value  *string         `json:"value" jsonschema:"required"`
+	Nested *nestedStruct   `json:"nested"`
+	PtrMap map[string]*int `json:"ptrMap"`
+	Items  []*string       `json:"items"`
+}
+
 func TestFromStruct(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -67,20 +74,8 @@ func TestFromStruct(t *testing.T) {
 				return
 			}
 
-			// Compare JSON representations to check equality
-			wantJSON, err := json.Marshal(tt.want)
-			if err != nil {
-				t.Errorf("Failed to marshal want: %v", err)
-				return
-			}
-			gotJSON, err := json.Marshal(got)
-			if err != nil {
-				t.Errorf("Failed to marshal got: %v", err)
-				return
-			}
-
-			if string(wantJSON) != string(gotJSON) {
-				t.Errorf("FromStruct() = %s, want %s", gotJSON, wantJSON)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FromStruct() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -119,6 +114,106 @@ func TestParseSchemaTag(t *testing.T) {
 			got := ParseSchemaTag(tt.tag)
 			if got.Required != tt.want.Required || got.Description != tt.want.Description {
 				t.Errorf("ParseSchemaTag() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFromStructType(t *testing.T) {
+	tests := []struct {
+		name    string
+		typeID  string
+		want    Object
+		wantErr bool
+	}{
+		{
+			name:   "basic struct",
+			typeID: "testStruct",
+			want: Object{
+				Properties: map[string]Schema{
+					"string": String{Description: "A string field"},
+					"int":    Integer{Description: "An integer field"},
+					"bool":   Boolean{},
+					"float":  Number{},
+					"slice":  Array{Items: String{}, Description: "A slice of strings"},
+					"map":    Map{AdditionalProperties: Integer{}},
+					"nested": Object{
+						Properties: map[string]Schema{
+							"value": String{},
+						},
+						Required: []string{"value"},
+					},
+				},
+				Required: []string{"string"},
+			},
+		},
+		{
+			name:   "pointer struct",
+			typeID: "pointerStruct",
+			want: Object{
+				Properties: map[string]Schema{
+					"value": String{},
+					"nested": Object{
+						Properties: map[string]Schema{
+							"value": String{},
+						},
+						Required: []string{"value"},
+					},
+					"ptrMap": Map{AdditionalProperties: Integer{}},
+					"items":  Array{Items: String{}},
+				},
+				Required: []string{"value"},
+			},
+		},
+		{
+			name:    "non-struct type",
+			typeID:  "string",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got Object
+			var err error
+
+			switch tt.typeID {
+			case "testStruct":
+				got, err = FromStructType[testStruct]()
+			case "pointerStruct":
+				got, err = FromStructType[pointerStruct]()
+			case "string":
+				got, err = FromStructType[string]()
+			}
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FromStructType() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FromStructType() = %v, want %v", got, tt.want)
+			}
+
+			// Compare JSON representations to check equality
+			wantJSON, err := json.Marshal(tt.want)
+			if err != nil {
+				t.Errorf("Failed to marshal want: %v", err)
+				return
+			}
+			gotJSON, err := json.Marshal(got)
+			if err != nil {
+				t.Errorf("Failed to marshal got: %v", err)
+				return
+			}
+
+			if string(wantJSON) != string(gotJSON) {
+				t.Errorf("FromStructType() = %s, want %s", gotJSON, wantJSON)
 			}
 		})
 	}

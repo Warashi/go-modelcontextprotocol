@@ -35,8 +35,15 @@ func ParseSchemaTag(tag reflect.StructTag) SchemaTag {
 
 // FromStruct generates a JSON schema Object from a struct type
 func FromStruct(v any) (Object, error) {
-	t := reflect.TypeOf(v)
-	if t.Kind() == reflect.Ptr {
+	return fromStructType(reflect.TypeOf(v))
+}
+
+func FromStructType[T any]() (Object, error) {
+	return fromStructType(reflect.TypeOf((*T)(nil)).Elem())
+}
+
+func fromStructType(t reflect.Type) (Object, error) {
+	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
@@ -48,7 +55,7 @@ func FromStruct(v any) (Object, error) {
 	}
 
 	var required []string
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 
 		// Skip unexported fields
@@ -117,7 +124,7 @@ func generateSchema(t reflect.Type, tag SchemaTag) (Schema, error) {
 		}
 		return Map{AdditionalProperties: additionalProperties, Description: tag.Description}, nil
 	case reflect.Struct:
-		obj, err := FromStruct(reflect.New(t).Interface())
+		obj, err := fromStructType(t)
 		if err != nil {
 			return nil, fmt.Errorf("nested struct: %w", err)
 		}
