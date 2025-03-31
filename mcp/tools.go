@@ -26,7 +26,7 @@ type ListToolsRequestParams struct {
 // ListToolsResultData is the result of the list tools request.
 type ListToolsResultData struct {
 	Tools      []tool `json:"tools"`
-	NextCursor string `json:"nextCursor"`
+	NextCursor string `json:"nextCursor,omitempty"`
 }
 
 // ListTools implements the jsonrpc2.HandlerFunc
