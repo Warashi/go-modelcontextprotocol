@@ -311,7 +311,7 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 		return err
 	}
 
-	c.log("sendResponse: %s", b)
+	c.log("sendResponse", slog.String("body", string(b)))
 
 	if err := c.transport.Send(b); err != nil {
 		return err
