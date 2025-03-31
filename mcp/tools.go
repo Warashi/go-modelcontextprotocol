@@ -31,7 +31,17 @@ type ListToolsResultData struct {
 
 // ListTools implements the jsonrpc2.HandlerFunc
 func (s *Server) ListTools(ctx context.Context, request *Request[ListToolsRequestParams]) (*Result[ListToolsResultData], error) {
-	if request.Params.Cursor != "" {
+	if request == nil {
+		request = &Request[ListToolsRequestParams]{}
+	}
+
+	// Initialize empty params if not provided
+	var params ListToolsRequestParams
+	if request.Params != (ListToolsRequestParams{}) {
+		params = request.Params
+	}
+
+	if params.Cursor != "" {
 		return nil, jsonrpc2.NewError(jsonrpc2.CodeInvalidRequest, "cursor is not supported", struct{}{})
 	}
 
@@ -101,6 +111,10 @@ func NewTool[Input, Output any](name, description string, inputSchema jsonschema
 
 // NewToolFunc creates a new tool with a handler function.
 func NewToolFunc[Input, Output any](name, description string, inputSchema jsonschema.Object, handler func(ctx context.Context, input Input) (Output, error)) Tool[Input, Output] {
+	// Initialize empty Properties map if not set
+	if inputSchema.Properties == nil {
+		inputSchema.Properties = make(map[string]jsonschema.Schema)
+	}
 	return NewTool(name, description, inputSchema, ToolHandlerFunc[Input, Output](handler))
 }
 

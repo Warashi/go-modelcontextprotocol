@@ -85,7 +85,7 @@ func (id ID) MarshalJSON() ([]byte, error) {
 type Request[Params any] struct {
 	ID     ID     `json:"id,omitzero"`
 	Method Method `json:"method"`
-	Params Params `json:"params,omitempty,omitzero"`
+	Params Params `json:"params,omitempty"`
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -94,7 +94,7 @@ func (r *Request[Params]) MarshalJSON() ([]byte, error) {
 		return json.Marshal(struct {
 			JSONRPC string `json:"jsonrpc"`
 			Method  Method `json:"method"`
-			Params  Params `json:"params,omitempty,omitzero"`
+			Params  Params `json:"params,omitempty"`
 		}{
 			JSONRPC: "2.0",
 			Method:  r.Method,
@@ -105,7 +105,7 @@ func (r *Request[Params]) MarshalJSON() ([]byte, error) {
 		JSONRPC string `json:"jsonrpc"`
 		ID      ID     `json:"id,omitzero"`
 		Method  Method `json:"method"`
-		Params  Params `json:"params,omitempty,omitzero"`
+		Params  Params `json:"params,omitempty"`
 	}{
 		JSONRPC: "2.0",
 		ID:      r.ID,
@@ -120,7 +120,7 @@ func (r *Request[Params]) UnmarshalJSON(data []byte) error {
 		JSONRPC string `json:"jsonrpc"`
 		ID      ID     `json:"id,omitzero"`
 		Method  Method `json:"method"`
-		Params  Params `json:"params,omitempty,omitzero"`
+		Params  Params `json:"params,omitempty"`
 	}
 	if err := json.Unmarshal(data, &req); err != nil {
 		return err
