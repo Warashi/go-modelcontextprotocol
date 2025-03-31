@@ -262,7 +262,7 @@ func (c *Conn) log(msg string, args ...any) {
 
 // handleRequest handles a JSON-RPC 2.0 request message.
 func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
-	c.log("handleRequest: %s", msg)
+	c.log("handleRequest", slog.String("message", string(msg)))
 
 	select {
 	case <-ctx.Done():
