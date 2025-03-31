@@ -158,6 +158,7 @@ func (s *Server) Close() error {
 	return err
 }
 
+// log logs a message using the server's logger.
 func (s *Server) log(msg string, args ...any) {
 	if s.logger != nil {
 		s.logger.Debug(msg, args...)

@@ -254,6 +254,7 @@ func (c *Conn) handleRawMessage(ctx context.Context, msg json.RawMessage) error 
 	}
 }
 
+// log logs a message using the connection's logger.
 func (c *Conn) log(msg string, args ...any) {
 	if c.logger != nil {
 		c.logger.Debug(msg, args...)
