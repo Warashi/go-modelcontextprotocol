@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.0.6](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.5...v0.0.6) - 2025-03-31
+- refactor: split jsonrpc2 package files by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/14
+- feat: add generic function to generate schema from struct type by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/16
+- feat: Added logger and other response related updates by @radutopala in https://github.com/Warashi/go-modelcontextprotocol/pull/17
+
 ## [v0.0.5](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.4...v0.0.5) - 2025-03-29
 - fix: sse transport by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/12
 
