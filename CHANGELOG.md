@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.7](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.6...v0.0.7) - 2025-03-31
+- feat: nextCursor is omitted if empty by @radutopala in https://github.com/Warashi/go-modelcontextprotocol/pull/18
+
 ## [v0.0.6](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.5...v0.0.6) - 2025-03-31
 - refactor: split jsonrpc2 package files by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/14
 - feat: add generic function to generate schema from struct type by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/16
