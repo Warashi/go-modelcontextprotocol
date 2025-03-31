@@ -354,7 +354,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 
 // handleResponse handles a JSON-RPC 2.0 response message.
 func (c *Conn) handleResponse(ctx context.Context, msg json.RawMessage) error {
-	c.log("handleResponse: %s", msg)
+	c.log("handleResponse", slog.String("message", string(msg)))
 
 	select {
 	case <-ctx.Done():
