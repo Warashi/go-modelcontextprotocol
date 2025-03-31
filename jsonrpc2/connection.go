@@ -343,7 +343,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 		return err
 	}
 
-	c.log("sendError: %s", b)
+	c.log("sendError", slog.String("body", string(b)))
 
 	if err := c.transport.Send(b); err != nil {
 		return err
