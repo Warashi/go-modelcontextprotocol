@@ -257,7 +257,7 @@ func (c *Conn) handleRawMessage(ctx context.Context, msg json.RawMessage) error 
 
 // handleRequest handles a JSON-RPC 2.0 request message.
 func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
-	c.logger.Debug("handleRequest", slog.String("message", string(msg)))
+	c.logger.DebugContext(ctx, "handleRequest", slog.String("message", string(msg)))
 
 	select {
 	case <-ctx.Done():
@@ -306,7 +306,7 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 		return err
 	}
 
-	c.logger.Debug("sendResponse", slog.String("body", string(b)))
+	c.logger.DebugContext(ctx, "sendResponse", slog.String("body", string(b)))
 
 	if err := c.transport.Send(b); err != nil {
 		return err
@@ -338,7 +338,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 		return err
 	}
 
-	c.logger.Debug("sendError", slog.String("body", string(b)))
+	c.logger.DebugContext(ctx, "sendError", slog.String("body", string(b)))
 
 	if err := c.transport.Send(b); err != nil {
 		return err
@@ -349,7 +349,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 
 // handleResponse handles a JSON-RPC 2.0 response message.
 func (c *Conn) handleResponse(ctx context.Context, msg json.RawMessage) error {
-	c.logger.Debug("handleResponse", slog.String("message", string(msg)))
+	c.logger.DebugContext(ctx, "handleResponse", slog.String("message", string(msg)))
 
 	select {
 	case <-ctx.Done():
