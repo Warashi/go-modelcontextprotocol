@@ -2,7 +2,6 @@ package jsonrpc2
 
 import (
 	"context"
-	"encoding/json"
 	"sync/atomic"
 )
 
@@ -40,15 +39,5 @@ func Notify[Params any](ctx context.Context, conn *Conn, method string, params P
 	default:
 	}
 
-	req := &Request[Params]{
-		Method: Method(method),
-		Params: params,
-	}
-
-	b, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	return conn.transport.Send(b)
+	return conn.Notify(ctx, method, params)
 }

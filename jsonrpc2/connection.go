@@ -181,6 +181,29 @@ func (c *Conn) Call(ctx context.Context, id ID, method string, params any, resul
 	}
 }
 
+// Notify sends a notification to the server.
+func (c *Conn) Notify(ctx context.Context, method string, params any) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.closed:
+		return errors.New("connection closed")
+	default:
+	}
+
+	req := &Request[any]{
+		Method: Method(method),
+		Params: params,
+	}
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	return c.transport.Send(b)
+}
+
 // serve starts serving requests.
 // serve will return an error if the connection is closed.
 func (c *Conn) serve(ctx context.Context) error {
