@@ -1,6 +1,7 @@
 package jsonrpc2
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +24,34 @@ type ID struct {
 func NewID[T interface {
 	string | int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | json.Number
 }](v T) ID {
-	return ID{value: v}
+	switch v := any(v).(type) {
+	case string:
+		return ID{value: v}
+	case int:
+		return ID{value: json.Number(strconv.FormatInt(int64(v), 10))}
+	case int8:
+		return ID{value: json.Number(strconv.FormatInt(int64(v), 10))}
+	case int16:
+		return ID{value: json.Number(strconv.FormatInt(int64(v), 10))}
+	case int32:
+		return ID{value: json.Number(strconv.FormatInt(int64(v), 10))}
+	case int64:
+		return ID{value: json.Number(strconv.FormatInt(v, 10))}
+	case uint:
+		return ID{value: json.Number(strconv.FormatUint(uint64(v), 10))}
+	case uint8:
+		return ID{value: json.Number(strconv.FormatUint(uint64(v), 10))}
+	case uint16:
+		return ID{value: json.Number(strconv.FormatUint(uint64(v), 10))}
+	case uint32:
+		return ID{value: json.Number(strconv.FormatUint(uint64(v), 10))}
+	case uint64:
+		return ID{value: json.Number(strconv.FormatUint(v, 10))}
+	case json.Number:
+		return ID{value: v}
+	default:
+		panic(fmt.Sprintf("unreachable: invalid ID type: %T", v))
+	}
 }
 
 // IsNull returns true if the ID is null.
@@ -38,46 +66,28 @@ func (id ID) String() string {
 	switch v := id.value.(type) {
 	case string:
 		return v
-	case int:
-		return strconv.FormatInt(int64(v), 10)
-	case int8:
-		return strconv.FormatInt(int64(v), 10)
-	case int16:
-		return strconv.FormatInt(int64(v), 10)
-	case int32:
-		return strconv.FormatInt(int64(v), 10)
-	case int64:
-		return strconv.FormatInt(v, 10)
-	case uint:
-		return strconv.FormatUint(uint64(v), 10)
-	case uint8:
-		return strconv.FormatUint(uint64(v), 10)
-	case uint16:
-		return strconv.FormatUint(uint64(v), 10)
-	case uint32:
-		return strconv.FormatUint(uint64(v), 10)
-	case uint64:
-		return strconv.FormatUint(v, 10)
 	case json.Number:
 		return v.String()
 	case nil:
 		return ""
 	default:
-		panic("invalid ID type")
+		panic(fmt.Sprintf("unreachable: invalid ID type: %T", v))
 	}
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (id *ID) UnmarshalJSON(data []byte) error {
 	var v any
-	if err := json.Unmarshal(data, &v); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
 		return err
 	}
 	switch v := v.(type) {
 	case string:
 		id.value = v
-	case float64:
-		id.value = int(v)
+	case json.Number:
+		id.value = v
 	case nil:
 		id.value = v
 	default:
@@ -89,7 +99,7 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaler interface.
 func (id ID) MarshalJSON() ([]byte, error) {
 	switch v := id.value.(type) {
-	case string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, json.Number, nil:
+	case string, json.Number, nil:
 		return json.Marshal(v)
 	default:
 		return nil, fmt.Errorf("invalid ID type: %T", v)
