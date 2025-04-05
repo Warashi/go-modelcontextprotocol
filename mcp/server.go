@@ -92,6 +92,7 @@ func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
 		resources:         make([]Resource, 0),         // to return empty list instead of nil
 		resourceTemplates: make([]ResourceTemplate, 0), // to return empty list instead of nil
 		connections:       make(map[uint64]*jsonrpc2.Conn),
+		logger:            slog.New(slog.DiscardHandler),
 	}
 
 	for _, opt := range opts {
@@ -156,11 +157,4 @@ func (s *Server) Close() error {
 	}
 
 	return err
-}
-
-// log logs a message using the server's logger.
-func (s *Server) log(msg string, args ...any) {
-	if s.logger != nil {
-		s.logger.Debug(msg, args...)
-	}
 }
