@@ -114,7 +114,6 @@ func TestID_MarshalJSON(t *testing.T) {
 	}{
 		{id: ID{value: "test"}, expected: `"test"`},
 		{id: ID{value: json.Number("123")}, expected: `123`},
-		{id: ID{value: json.Number("123")}, expected: `123`},
 		{id: ID{value: nil}, expected: `null`},
 	}
 
