@@ -20,7 +20,9 @@ type ID struct {
 }
 
 // NewID creates a new ID from a string or an integer.
-func NewID[T interface{ string | int }](v T) ID {
+func NewID[T interface {
+	string | int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64 | json.Number
+}](v T) ID {
 	return ID{value: v}
 }
 
@@ -37,7 +39,27 @@ func (id ID) String() string {
 	case string:
 		return v
 	case int:
-		return strconv.Itoa(v)
+		return strconv.FormatInt(int64(v), 10)
+	case int8:
+		return strconv.FormatInt(int64(v), 10)
+	case int16:
+		return strconv.FormatInt(int64(v), 10)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case json.Number:
+		return v.String()
 	case nil:
 		return ""
 	default:
@@ -67,14 +89,10 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaler interface.
 func (id ID) MarshalJSON() ([]byte, error) {
 	switch v := id.value.(type) {
-	case string:
-		return json.Marshal(v)
-	case int:
-		return json.Marshal(v)
-	case nil:
+	case string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, json.Number, nil:
 		return json.Marshal(v)
 	default:
-		return nil, errors.New("invalid ID type")
+		return nil, fmt.Errorf("invalid ID type: %T", v)
 	}
 }
 
