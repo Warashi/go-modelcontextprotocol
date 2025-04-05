@@ -103,6 +103,7 @@ func NewServer(name, version string, opts ...ServerOption) (*Server, error) {
 	initOpts = append(initOpts,
 		jsonrpc2.WithHandlerFunc("ping", s.Ping),
 		jsonrpc2.WithHandlerFunc("initialize", s.Initialize),
+		jsonrpc2.WithHandlerFunc("notifications/initialized", s.Initialized),
 		jsonrpc2.WithHandlerFunc("tools/list", s.ListTools),
 		jsonrpc2.WithHandlerFunc("tools/call", s.CallTool),
 		jsonrpc2.WithHandlerFunc("resources/list", s.ListResources),
