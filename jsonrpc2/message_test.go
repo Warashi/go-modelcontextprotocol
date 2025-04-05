@@ -30,7 +30,7 @@ func TestID_String(t *testing.T) {
 		expected string
 	}{
 		{id: ID{value: "test"}, expected: "test"},
-		{id: ID{value: 123}, expected: "123"},
+		{id: ID{value: json.Number("123")}, expected: "123"},
 		{id: ID{value: nil}, expected: ""},
 	}
 
@@ -58,7 +58,7 @@ func TestID_UnmarshalJSON(t *testing.T) {
 		expected ID
 	}{
 		{input: `"test"`, expected: ID{value: "test"}},
-		{input: `123`, expected: ID{value: 123}},
+		{input: `123`, expected: ID{value: json.Number("123")}},
 		{input: `null`, expected: ID{value: nil}},
 	}
 
@@ -113,7 +113,7 @@ func TestID_MarshalJSON(t *testing.T) {
 		expected string
 	}{
 		{id: ID{value: "test"}, expected: `"test"`},
-		{id: ID{value: 123}, expected: `123`},
+		{id: ID{value: json.Number("123")}, expected: `123`},
 		{id: ID{value: nil}, expected: `null`},
 	}
 
@@ -146,7 +146,7 @@ func TestRequest_MarshalJSON(t *testing.T) {
 			expected: `{"jsonrpc":"2.0","id":"1","method":"testMethod","params":{"param1":"value1"}}`,
 		},
 		{
-			req:      &Request[any]{ID: ID{value: 1}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
+			req:      &Request[any]{ID: ID{value: json.Number("1")}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
 			expected: `{"jsonrpc":"2.0","id":1,"method":"testMethod","params":{"param1":"value1"}}`,
 		},
 		{
@@ -177,7 +177,7 @@ func TestRequest_UnmarshalJSON(t *testing.T) {
 		},
 		{
 			input:    `{"jsonrpc":"2.0","id":1,"method":"testMethod","params":{"param1":"value1"}}`,
-			expected: Request[map[string]any]{ID: ID{value: 1}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
+			expected: Request[map[string]any]{ID: ID{value: json.Number("1")}, Method: "testMethod", Params: map[string]any{"param1": "value1"}},
 		},
 		{
 			input:    `{"jsonrpc":"2.0","method":"testMethod","params":{"param1":"value1"}}`,
@@ -206,7 +206,7 @@ func TestResponse_MarshalJSON(t *testing.T) {
 			expected: `{"jsonrpc":"2.0","id":"1","result":"result"}`,
 		},
 		{
-			resp:     &Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
+			resp:     &Response[any, any]{ID: ID{value: json.Number("1")}, Result: 123, Error: Error[any]{}},
 			expected: `{"jsonrpc":"2.0","id":1,"result":123}`,
 		},
 		{
@@ -237,7 +237,7 @@ func TestResponse_UnmarshalJSON(t *testing.T) {
 		},
 		{
 			input:    `{"jsonrpc":"2.0","id":1,"result":123}`,
-			expected: Response[any, any]{ID: ID{value: 1}, Result: 123, Error: Error[any]{}},
+			expected: Response[any, any]{ID: ID{value: json.Number("1")}, Result: 123, Error: Error[any]{}},
 		},
 		{
 			input:    `{"jsonrpc":"2.0","error":{"code":-32000,"message":"error"}}`,
