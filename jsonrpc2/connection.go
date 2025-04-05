@@ -76,6 +76,7 @@ func NewConnection(transport transport.Session, opts ...ConnectionInitialization
 		pending:   make(map[ID]chan json.RawMessage),
 		handlers:  make(map[Method]func(ctx context.Context, req json.RawMessage) (any, error)),
 		closed:    make(chan struct{}),
+		logger:    slog.New(slog.DiscardHandler),
 	}
 
 	for _, opt := range opts {
@@ -254,16 +255,9 @@ func (c *Conn) handleRawMessage(ctx context.Context, msg json.RawMessage) error 
 	}
 }
 
-// log logs a message using the connection's logger.
-func (c *Conn) log(msg string, args ...any) {
-	if c.logger != nil {
-		c.logger.Debug(msg, args...)
-	}
-}
-
 // handleRequest handles a JSON-RPC 2.0 request message.
 func (c *Conn) handleRequest(ctx context.Context, msg json.RawMessage) error {
-	c.log("handleRequest", slog.String("message", string(msg)))
+	c.logger.Debug("handleRequest", slog.String("message", string(msg)))
 
 	select {
 	case <-ctx.Done():
@@ -312,7 +306,7 @@ func (c *Conn) sendResponse(ctx context.Context, id ID, resp any) error {
 		return err
 	}
 
-	c.log("sendResponse", slog.String("body", string(b)))
+	c.logger.Debug("sendResponse", slog.String("body", string(b)))
 
 	if err := c.transport.Send(b); err != nil {
 		return err
@@ -344,7 +338,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 		return err
 	}
 
-	c.log("sendError", slog.String("body", string(b)))
+	c.logger.Debug("sendError", slog.String("body", string(b)))
 
 	if err := c.transport.Send(b); err != nil {
 		return err
@@ -355,7 +349,7 @@ func (c *Conn) sendError(ctx context.Context, id ID, err error) error {
 
 // handleResponse handles a JSON-RPC 2.0 response message.
 func (c *Conn) handleResponse(ctx context.Context, msg json.RawMessage) error {
-	c.log("handleResponse", slog.String("message", string(msg)))
+	c.logger.Debug("handleResponse", slog.String("message", string(msg)))
 
 	select {
 	case <-ctx.Done():
