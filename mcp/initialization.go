@@ -102,5 +102,6 @@ func (s *Server) Initialize(ctx context.Context, request *Request[Initialization
 }
 
 func (s *Server) Initialized(ctx context.Context, params struct{}) (struct{}, error) {
+	s.logger.DebugContext(ctx, "initialized")
 	return struct{}{}, nil
 }
