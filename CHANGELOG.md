@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.9](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.8...v0.0.9) - 2025-04-12
+- chore(deps): bump github/codeql-action from 3.28.13 to 3.28.15 by @dependabot in https://github.com/Warashi/go-modelcontextprotocol/pull/29
+
 ## [v0.0.8](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.7...v0.0.8) - 2025-04-05
 - ci: create codeql.yml by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/20
 - chore: add dependabot config by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/22
