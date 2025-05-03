@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.0.9](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.8...v0.0.9) - 2025-05-03
+- chore(deps): bump github/codeql-action from 3.28.13 to 3.28.15 by @dependabot in https://github.com/Warashi/go-modelcontextprotocol/pull/29
+- chore(deps): bump Songmu/tagpr from 1.5.1 to 1.5.2 by @dependabot in https://github.com/Warashi/go-modelcontextprotocol/pull/31
+- chore(deps): bump github/codeql-action from 3.28.15 to 3.28.16 by @dependabot in https://github.com/Warashi/go-modelcontextprotocol/pull/32
+- chore(deps): bump actions/create-github-app-token from 2.0.2 to 2.0.5 by @dependabot in https://github.com/Warashi/go-modelcontextprotocol/pull/33
+- chore(deps): bump github/codeql-action from 3.28.16 to 3.28.17 by @dependabot in https://github.com/Warashi/go-modelcontextprotocol/pull/34
+
 ## [v0.0.8](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.7...v0.0.8) - 2025-04-05
 - ci: create codeql.yml by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/20
 - chore: add dependabot config by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/22
