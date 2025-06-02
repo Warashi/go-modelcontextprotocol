@@ -425,3 +425,145 @@ func TestServeHTTP(t *testing.T) {
 		})
 	}
 }
+
+func TestServeHTTP_withMux(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name                  string
+		method                string
+		path                  string
+		body                  string
+		setup                 func(sse *SSE)
+		expectedStatus        int
+		expectedBodySubstring string
+		check                 func(t *testing.T, sse *SSE, rec *testResponseRecorder)
+	}{
+		{
+			name:           "SSE GET without trailing slash redirects to trailing slash",
+			method:         "GET",
+			path:           "/sse",
+			expectedStatus: http.StatusMovedPermanently,
+			setup:          nil,
+		},
+		{
+			name:                  "SSE GET success with trailing slash",
+			method:                "GET",
+			path:                  "/sse/",
+			expectedStatus:        http.StatusOK,
+			expectedBodySubstring: "event: endpoint",
+			setup:                 nil,
+			check: func(t *testing.T, sse *SSE, rec *testResponseRecorder) {
+				if len(sse.sessions) != 0 {
+					t.Errorf("expected sessions map to be empty, got %d", len(sse.sessions))
+				}
+			},
+		},
+		{
+			name:                  "SSE wrong method on SSE path",
+			method:                "POST",
+			path:                  "/sse/",
+			expectedStatus:        http.StatusMethodNotAllowed,
+			expectedBodySubstring: "Method not allowed",
+			setup:                 nil,
+		},
+		{
+			name:                  "Message GET wrong method",
+			method:                "GET",
+			path:                  "/sse/42",
+			expectedStatus:        http.StatusMethodNotAllowed,
+			expectedBodySubstring: "Method not allowed",
+			setup:                 nil,
+		},
+		{
+			name:                  "Message POST with invalid URL pattern",
+			method:                "POST",
+			path:                  "/sse/extra/42",
+			expectedStatus:        http.StatusNotFound,
+			expectedBodySubstring: "Not found",
+			setup:                 nil,
+		},
+		{
+			name:                  "Message POST session not found",
+			method:                "POST",
+			path:                  "/sse/42",
+			expectedStatus:        http.StatusNotFound,
+			expectedBodySubstring: "Session not found",
+			setup:                 nil,
+		},
+		{
+			name:                  "Message POST success",
+			method:                "POST",
+			path:                  "/sse/42",
+			body:                  "test message",
+			expectedStatus:        http.StatusOK,
+			expectedBodySubstring: "",
+			setup: func(sse *SSE) {
+				// Prepopulate the sessions map with a dummy session for id 42.
+				sse.sessions[42] = &SSESession{
+					ch:     make(chan io.Reader, 1),
+					writer: dummyFlusher{},
+					done:   make(chan struct{}),
+				}
+			},
+			check: func(t *testing.T, sse *SSE, rec *testResponseRecorder) {
+				sess, exists := sse.sessions[42]
+				if !exists {
+					t.Fatalf("expected session with id 42 to exist")
+				}
+				select {
+				case r := <-sess.ch:
+					data, err := io.ReadAll(r)
+					if err != nil {
+						t.Fatalf("failed to read from session channel: %v", err)
+					}
+					if string(data) != "test message" {
+						t.Errorf("expected message %q, got %q", "test message", string(data))
+					}
+				default:
+					t.Errorf("expected a message in session channel but got none")
+				}
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Create a new SSE instance for each test case to avoid shared state.
+			handler := &testSessionHandler{}
+			sse, err := NewSSE("http://localhost/sse", handler)
+			if err != nil {
+				t.Fatalf("failed to create SSE: %v", err)
+			}
+			// Initialize the sessions map.
+			sse.sessions = make(map[uint64]*SSESession)
+			if tc.setup != nil {
+				tc.setup(sse)
+			}
+
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+			rec := &testResponseRecorder{httptest.NewRecorder()}
+
+			mux := http.NewServeMux()
+			mux.Handle("/sse/", sse) // Register the SSE handler with a trailing slash to match the path
+
+			mux.ServeHTTP(rec, req)
+
+			t.Log(rec.Header())
+
+			if rec.Code != tc.expectedStatus {
+				t.Errorf("expected status %d, got %d", tc.expectedStatus, rec.Code)
+			}
+			if tc.expectedBodySubstring != "" && !strings.Contains(rec.Body.String(), tc.expectedBodySubstring) {
+				t.Errorf("expected response body to contain %q, got %q", tc.expectedBodySubstring, rec.Body.String())
+			}
+
+			if tc.check != nil {
+				tc.check(t, sse, rec)
+			}
+		})
+	}
+}

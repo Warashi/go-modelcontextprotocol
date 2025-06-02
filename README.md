@@ -144,7 +144,8 @@ func main() {
 	}
 	
 	// Register the handler with your HTTP server
-	http.Handle("/sse", handler)
+	// We need trailing slash to handle all under `/sse/` with SSE handler
+	http.Handle("/sse/", handler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
