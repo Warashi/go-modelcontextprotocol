@@ -1,5 +1,33 @@
 # Changelog
 
+## [v0.0.9](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.8...v0.0.9) - 2025-09-07
+- chore(deps): bump github/codeql-action from 3.28.13 to 3.28.15 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/29
+- chore(deps): bump Songmu/tagpr from 1.5.1 to 1.5.2 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/31
+- chore(deps): bump github/codeql-action from 3.28.15 to 3.28.16 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/32
+- chore(deps): bump actions/create-github-app-token from 2.0.2 to 2.0.5 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/33
+- chore(deps): bump github/codeql-action from 3.28.16 to 3.28.17 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/34
+- chore(deps): bump actions/create-github-app-token from 2.0.5 to 2.0.6 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/35
+- chore(deps): bump actions/setup-go from 5.4.0 to 5.5.0 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/36
+- chore(deps): bump github/codeql-action from 3.28.17 to 3.28.18 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/38
+- chore(deps): bump Songmu/tagpr from 1.5.2 to 1.6.1 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/37
+- fix(sse): update SSE handler to require trailing slash for proper routing by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/40
+- chore(deps): bump github/codeql-action from 3.28.18 to 3.28.19 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/41
+- chore(deps): bump github/codeql-action from 3.28.19 to 3.29.0 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/42
+- chore(deps): bump Songmu/tagpr from 1.6.1 to 1.7.0 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/43
+- chore(deps): bump github/codeql-action from 3.29.0 to 3.29.1 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/44
+- chore(deps): bump github/codeql-action from 3.29.1 to 3.29.2 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/45
+- chore(deps): bump github/codeql-action from 3.29.2 to 3.29.4 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/46
+- chore(deps): bump github/codeql-action from 3.29.4 to 3.29.5 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/47
+- chore(deps): bump github/codeql-action from 3.29.7 to 3.29.8 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/49
+- chore(deps): bump actions/create-github-app-token from 2.0.6 to 2.1.0 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/48
+- chore(deps): bump actions/create-github-app-token from 2.1.0 to 2.1.1 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/50
+- chore(deps): bump github/codeql-action from 3.29.8 to 3.29.9 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/51
+- chore(deps): bump actions/checkout from 4.2.2 to 5.0.0 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/52
+- chore(deps): bump github/codeql-action from 3.29.9 to 3.29.11 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/53
+- chore(deps): bump github/codeql-action from 3.29.11 to 3.30.1 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/54
+- chore(deps): bump Songmu/tagpr from 1.7.0 to 1.7.2 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/55
+- chore(deps): bump actions/setup-go from 5.5.0 to 6.0.0 by @dependabot[bot] in https://github.com/Warashi/go-modelcontextprotocol/pull/56
+
 ## [v0.0.8](https://github.com/Warashi/go-modelcontextprotocol/compare/v0.0.7...v0.0.8) - 2025-04-05
 - ci: create codeql.yml by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/20
 - chore: add dependabot config by @Warashi in https://github.com/Warashi/go-modelcontextprotocol/pull/22
